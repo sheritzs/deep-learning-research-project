@@ -1,3 +1,4 @@
+from IPython.display import display
 import json
 import pandas as pd
 import urllib.request
@@ -33,3 +34,36 @@ def df_from_json(file):
     data = json_object['hourly']
 
     return pd.DataFrame(data)
+
+def generate_df_summary(df):
+    """Accepts a pandas dataframe and prints out basic details about the data and dataframe structure."""
+    
+    object_columns = [col for col in df.columns if df[col].dtype == 'object']
+    non_object_columns = [col for col in df.columns if df[col].dtype != 'object']
+    
+    print(f'Dataframe: {df.name}\n')
+    print(f'------ Head: ------')
+    display(df.head())
+    print('\n')
+    
+    print(f'------ Tail: ------')
+    display(df.tail())
+    print('\n')
+    
+    print('------ Column Summaries: ------')
+    display(df[object_columns].describe(include='all').transpose())
+    display(df[non_object_columns].describe().transpose())
+    print('\n')
+
+    print('------ Counts: ------\n')
+    print(f'Rows: {df.shape[0]:,}') 
+    print(f'Columns: {df.shape[1]:,}') 
+    print(f'Duplicate Rows = {df.duplicated().sum()} | % of Total Rows = {df.duplicated().sum()/df.shape[0]:.1%}') 
+    print('\n')
+
+    print('------ Info: ------\n')
+    display(df.info()) 
+    print('\n')
+    
+    print('------ Missing Data Percentage: ------')
+    display(df.isnull().sum()/len(df) * 100)   
