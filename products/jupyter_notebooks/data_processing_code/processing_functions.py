@@ -1,4 +1,5 @@
 import json
+import pandas as pd
 import urllib.request
 
 
@@ -21,3 +22,14 @@ def download_data(api_call: str, file_path: str, file_name: str):
         
     except:
         print('Error: file not downloaded')
+
+  
+def df_from_json(file):
+    """Reads in json weather data and returns a Pandas DataFrame."""
+    with open(file) as f:
+        contents = f.read()
+
+    json_object = json.loads(contents)
+    data = json_object['hourly']
+
+    return pd.DataFrame(data)
