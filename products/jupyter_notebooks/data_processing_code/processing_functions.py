@@ -67,3 +67,48 @@ def generate_df_summary(df):
     
     print('------ Missing Data Percentage: ------')
     display(df.isnull().sum()/len(df) * 100)   
+
+
+def daily_aggregations(dataframe):
+    """Aggregates the weather data at a daily level of granularity."""
+
+    df_copy = dataframe.copy()
+    df_copy['date'] = df_copy['time'].dt.normalize()
+    df_copy = df_copy.set_index('date')
+
+    daily_data = df_copy.loc[:, ['sunshine_s', 'precipitation', 'shortwave_radiation']].resample('D').sum()
+
+    # convert to hourly values 
+    daily_data['sunshine_hr'] = daily_data['sunshine_s'] / 3600
+
+    # columns for min, mean, and max aggregations
+    agg_cols = ['temp', 'humidity', 'dew_point', 'cloud_cover', 'wind_speed']
+
+    # Compute min, mean, and max values
+
+    # minimum aggregations
+    mins = df_copy[agg_cols].resample('D').min()
+    col_names_min = [f'min_{name}' for name in agg_cols]
+    mins.columns = col_names_min
+
+    # mean aggregations
+    means = df_copy[agg_cols].resample('D').mean()
+    col_names_mean = [f'mean_{name}' for name in agg_cols]
+    means.columns = col_names_mean
+
+    # max aggregations
+    maxes = df_copy[agg_cols].resample('D').max()
+    col_names_max = [f'max_{name}' for name in agg_cols]
+    maxes.columns = col_names_max
+
+    # merge the aggregated dataframes
+    for df in [mins, means, maxes]:
+        daily_data = pd.merge(daily_data, df, left_index=True, right_index=True)
+
+    daily_data = daily_data.drop(columns='sunshine_s').round(3)
+
+    # reorder the columns to display sunshine_hr first
+    column_list = list(daily_data.columns)
+    column_list[0], column_list[2] = column_list[2], column_list[0]
+
+    return daily_data[column_list]
