@@ -108,7 +108,11 @@ def daily_aggregations(dataframe):
     daily_data = daily_data.drop(columns='sunshine_s').round(3)
 
     # reorder the columns to display sunshine_hr first
-    column_list = list(daily_data.columns)
-    column_list[0], column_list[2] = column_list[2], column_list[0]
+    daily_data = daily_data.loc[:, ['sunshine_hr', 'shortwave_radiation', 'precipitation', 
+                                    'min_temp','mean_temp', 'max_temp',
+                                    'min_humidity', 'mean_humidity', 'max_humidity',
+                                    'min_dew_point','mean_dew_point', 'max_dew_point',
+                                    'min_cloud_cover',  'mean_cloud_cover', 'max_cloud_cover',
+                                    'min_wind_speed', 'mean_wind_speed', 'max_wind_speed']]
 
-    return daily_data[column_list]
+    return daily_data
