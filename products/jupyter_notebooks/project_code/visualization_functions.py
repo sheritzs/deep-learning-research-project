@@ -5,6 +5,8 @@ import seaborn as sns
 
 
 def correlation_matrix(df, cmap='coolwarm', mask=True, name=None):
+    """Accepts a dataframe and generates a correlation matrix. If
+    a name is provided, the image is saved."""
     corr = df.corr()
 
     plt.subplots(figsize=(18, 8))
