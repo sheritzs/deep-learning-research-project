@@ -42,25 +42,29 @@ def generate_df_summary(df, describe_only=False):
     non_object_columns = [col for col in df.columns if df[col].dtype != 'object']
     
     print(f'Dataframe: {df.name}\n')
-    print(f'------ Head: ------')
-    display(df.head())
-    print('\n')
 
     if describe_only:
         print('------ Column Summaries: ------')
-        display(df[object_columns].describe(include='all').transpose())
-        display(df[non_object_columns].describe().transpose())
+        if object_columns:
+            display(df[object_columns].describe(include='all').transpose())
+        if non_object_columns:
+            display(df[non_object_columns].describe().transpose())
         print('\n')
 
     else:
+        print(f'------ Head: ------')
+        display(df.head())
+        print('\n')
     
         print(f'------ Tail: ------')
         display(df.tail())
         print('\n')
         
         print('------ Column Summaries: ------')
-        display(df[object_columns].describe(include='all').transpose())
-        display(df[non_object_columns].describe().transpose())
+        if object_columns:
+            display(df[object_columns].describe(include='all').transpose())
+        if non_object_columns:
+            display(df[non_object_columns].describe().transpose())
         print('\n')
 
         print('------ Counts: ------\n')
