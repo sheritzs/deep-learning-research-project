@@ -29,7 +29,7 @@ def correlation_matrix(df, figsize=(18,6), cmap='coolwarm', mask=True, name=None
     plt.show()
 
 def plot_seasonal_decomposition(df, column, period, color, name=''):
-    """Provides decomposition plots for a given dataframe and column."""
+    """Provides styled decomposition plots for a given dataframe and column."""
     decomposition = STL(df[column], period=period).fit()
 
     fig, (ax1, ax2, ax3, ax4) = plt.subplots(nrows=4, ncols=1, sharex=True,
