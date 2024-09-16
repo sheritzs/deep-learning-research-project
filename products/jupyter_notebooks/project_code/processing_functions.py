@@ -128,3 +128,47 @@ def daily_aggregations(dataframe):
                                     'min_wind_speed', 'mean_wind_speed', 'max_wind_speed']]
 
     return daily_data
+
+def get_season(month_day, data_type='string'):
+    """
+    Returns a season indicator based on a given month_day value.
+    There is roughly a 1-3 day margin of error, given the 
+    seasonal timeline in any given year.
+
+    month_day: a value calculated based on month of year and day of month,
+    such that January 1st = 101 and December 31st = 1231. 
+
+    """
+    try:
+
+        if data_type == 'string':
+
+            if ((month_day >= 320) and (month_day <= 619)):
+                season = "Spring"
+            elif ((month_day >= 620) and (month_day <= 921)):
+                season = "Summer"
+            elif ((month_day >= 922) and (month_day <= 1219)):
+                season = "Fall"
+            elif ((month_day >= 1220) or (month_day <= 319)):
+                season = "Winter"
+            else:
+                raise IndexError("Invalid month_day Input")
+
+        elif data_type == 'int':
+
+            if ((month_day >= 320) and (month_day <= 619)):
+                season = 1
+            elif ((month_day >= 620) and (month_day <= 921)):
+                season = 2
+            elif ((month_day >= 922) and (month_day <= 1219)):
+                season = 3
+            elif ((month_day >= 1220) or (month_day <= 319)):
+                season = 4
+            else:
+                raise IndexError("Invalid month_day Input")
+
+        return season
+
+    except:
+        error_string = "Error: data_type selected should be 'int' or 'string' "
+        return error_string
