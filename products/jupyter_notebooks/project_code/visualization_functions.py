@@ -370,7 +370,7 @@ def plot_seasonal_charts(monthly_data: dict, column='sunshine_hr',
     plt.show()
 
 def generate_boxplots(data, columns, y_labels, alternate_x_labels=None, 
-                      granularity='month'):
+                      granularity='month', name=None):
     
     """Generates monthly or seasonal boxplots for the given columns."""
     
@@ -392,5 +392,9 @@ def generate_boxplots(data, columns, y_labels, alternate_x_labels=None,
             plt.xticks(fontsize=20)
             
         plt.tight_layout()
-        plt.plot()
+
+        if name:
+            plt.savefig(f'{name}.png')
+
+        plt.show()
 
