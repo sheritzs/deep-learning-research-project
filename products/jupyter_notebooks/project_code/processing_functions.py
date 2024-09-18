@@ -1,4 +1,5 @@
 from IPython.display import display
+from darts import TimeSeries
 import json
 import numpy as np
 import pandas as pd
@@ -227,3 +228,7 @@ def adjust_outliers(data, columns, granularity='month'):
         print('\n')
 
     return df_clean
+
+def create_timeseries(df, col):
+  """Creates a TimeSeries object for a given column with data type float 32 for quicker training/processing."""
+  return TimeSeries.from_dataframe(df[['date', col]], 'date', col).astype(np.float32) 
