@@ -369,22 +369,28 @@ def plot_seasonal_charts(monthly_data: dict, column='sunshine_hr',
         
     plt.show()
 
-def monthly_boxplots(data, columns, alternate_x_labels=None):
+def generate_boxplots(data, columns, y_labels, alternate_x_labels=None, 
+                      granularity='month'):
+    
+    """Generates monthly or seasonal boxplots for the given columns."""
+    
     for col in columns:
         fig, ax = plt.subplots(figsize=(20,6))
-        boxplot = sns.boxplot(data=data, x='month', y=col, ax=ax, color='lightblue')
-        if col =='sunshine_hr':
-            y_label = 'Sunshine Duration (Hours)'
-        else:
-            y_label = ' '.join([name.title() for name in col.split('_')])
-        ax.set_ylabel(y_label, fontsize=22)
+        
+        if granularity == 'month':
+            boxplot = sns.boxplot(data=data, x='month', y=col, ax=ax, color='lightblue')
+        elif granularity == 'season':
+            boxplot = sns.boxplot(data=data, x='season_str', y=col, ax=ax, color='lightblue')
+            
+        ax.set_ylabel(y_labels[col], fontsize=22)
         ax.set_xlabel('')
         plt.yticks(fontsize=18)
+        
         if alternate_x_labels:
             ax.set_xticklabels(alternate_x_labels, fontsize=20)
         else:
             plt.xticks(fontsize=20)
+            
         plt.tight_layout()
         plt.plot()
-
 
