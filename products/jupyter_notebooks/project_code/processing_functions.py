@@ -1,5 +1,6 @@
 from IPython.display import display
 import json
+import numpy as np
 import pandas as pd
 import urllib.request
 
@@ -172,3 +173,57 @@ def get_season(month_day, data_type='string'):
     except:
         error_string = "Error: data_type selected should be 'int' or 'string' "
         return error_string
+
+def adjust_outliers(data, columns, granularity='month'):
+    """Caps outliers at +/- IQR*1.5 on the specified per-month or per-season basis."""
+    
+    df_clean = data.copy()
+    global_outlier_count = 0
+    
+    
+    for col in columns:
+        outlier_count = 0
+    
+        if granularity == 'month':
+            for month in set(df_clean['month'].unique()):
+                Q1 = df_clean[df_clean['month'] == month][col].quantile(0.25)
+                Q3 = df_clean[df_clean['month'] == month][col].quantile(0.75)
+                IQR = Q3 - Q1
+                lower = Q1 - 1.5*IQR
+                upper = Q3 + 1.5*IQR
+
+                outlier_count +=  len(df_clean[(df_clean['month'] == month) & (df_clean[col] > upper)]) + \
+                len(df_clean[(df_clean['month'] == month) & (df_clean[col] < lower)])
+
+
+                if outlier_count > 0:
+                    df_clean[col] = np.where((df_clean['month'] == month) & (df_clean[col] > upper), upper, df_clean[col])
+                    df_clean[col] = np.where((df_clean['month'] == month) & (df_clean[col] < lower), lower, df_clean[col])
+
+        elif granularity == 'season':
+            for season in set(df_clean['season_str'].unique()):
+                Q1 = df_clean[df_clean['season_str'] == season][col].quantile(0.25)
+                Q3 = df_clean[df_clean['season_str'] == season][col].quantile(0.75)
+                IQR = Q3 - Q1
+                lower = Q1 - 1.5*IQR
+                upper = Q3 + 1.5*IQR
+
+
+                outlier_count +=  len(df_clean[(df_clean['season_str'] == season) & (df_clean[col] > upper)]) + \
+                len(df_clean[(df_clean['season_str'] == season) & (df_clean[col] < lower)])
+
+                if outlier_count > 0:
+                    df_clean[col] = np.where((df_clean['season_str'] == season) & (df_clean[col] > upper), upper, df_clean[col])
+                    df_clean[col] = np.where((df_clean['season_str'] == season) & (df_clean[col] < lower), lower, df_clean[col])
+
+        else:
+            print('Invalid granularity specified. Please indicate "month" or "season".')
+            return None
+
+
+        global_outlier_count += outlier_count
+        print(f'Total outliers adjusted in the {col} column: {outlier_count:,}')
+        print(f'Percent of total rows: {outlier_count/len(df_clean):.2%}')
+        print('\n')
+
+    return df_clean
