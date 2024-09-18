@@ -1,6 +1,7 @@
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import seaborn as sns
 from statsmodels.tsa.seasonal import STL
 
@@ -367,5 +368,23 @@ def plot_seasonal_charts(monthly_data: dict, column='sunshine_hr',
         plt.savefig(f'{name}.png')
         
     plt.show()
+
+def monthly_boxplots(data, columns, alternate_x_labels=None):
+    for col in columns:
+        fig, ax = plt.subplots(figsize=(20,6))
+        boxplot = sns.boxplot(data=data, x='month', y=col, ax=ax, color='lightblue')
+        if col =='sunshine_hr':
+            y_label = 'Sunshine Duration (Hours)'
+        else:
+            y_label = ' '.join([name.title() for name in col.split('_')])
+        ax.set_ylabel(y_label, fontsize=22)
+        ax.set_xlabel('')
+        plt.yticks(fontsize=18)
+        if alternate_x_labels:
+            ax.set_xticklabels(alternate_x_labels, fontsize=20)
+        else:
+            plt.xticks(fontsize=20)
+        plt.tight_layout()
+        plt.plot()
 
 
