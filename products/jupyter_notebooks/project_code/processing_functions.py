@@ -230,5 +230,5 @@ def adjust_outliers(data, columns, granularity='month'):
     return df_clean
 
 def create_timeseries(df, col):
-  """Creates a TimeSeries object for a given column with data type float 32 for quicker training/processing."""
+  """Creates a TimeSeries object for the given column with data type float 32 for quicker training/processing."""
   return TimeSeries.from_dataframe(df[['date', col]], 'date', col).astype(np.float32) 
