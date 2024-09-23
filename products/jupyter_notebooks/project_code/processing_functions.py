@@ -131,6 +131,49 @@ def daily_aggregations(dataframe):
 
     return daily_data
 
+def daily_aggregations_v2(dataframe, agg_cols):
+    """Aggregates the weather data at a daily level of granularity."""
+    
+    df_copy = dataframe.copy()
+    df_copy['date'] = df_copy['time'].dt.normalize()
+    df_copy = df_copy.set_index('date')
+    
+    daily_data = df_copy.loc[:, ['sunshine_duration']].resample('D').sum()
+    
+    # convert to hourly values 
+    daily_data['sunshine_hr'] = daily_data['sunshine_duration'] / 3600
+    
+    # # Compute min, mean, and max values
+    
+    # # minimum aggregations
+    mins = df_copy[agg_cols].resample('D').min()
+    col_names_min = [f'{name}_min' for name in agg_cols]
+    mins.columns = col_names_min
+    
+    # # mean aggregations
+    means = df_copy[agg_cols].resample('D').mean()
+    col_names_mean = [f'{name}_mean' for name in agg_cols]
+    means.columns = col_names_mean
+    
+    # # max aggregations
+    maxes = df_copy[agg_cols].resample('D').max()
+    col_names_max = [f'{name}_max' for name in agg_cols]
+    maxes.columns = col_names_max
+    
+    # # merge the aggregated dataframes
+    for df in [mins, means, maxes]:
+        daily_data = pd.merge(daily_data, df, left_index=True, right_index=True)
+    
+    daily_data = daily_data.drop(columns='sunshine_duration').round(3)
+    
+    # # reorder the columns to display sunshine_hr first
+    reordered_columns = sorted([col for col in daily_data if col != 'sunshine_hr'])
+    reordered_columns.insert(0, 'sunshine_hr')
+    
+    daily_data = daily_data[reordered_columns]
+
+    return daily_data
+
 def get_season(month_day, data_type='string'):
     """
     Returns a season indicator based on a given month_day value.
@@ -174,6 +217,8 @@ def get_season(month_day, data_type='string'):
     except:
         error_string = "Error: data_type selected should be 'int' or 'string' "
         return error_string
+    
+
 
 def adjust_outliers(data, columns, granularity='month'):
     """Caps outliers at +/- IQR*1.5 on the specified per-month or per-season basis."""
