@@ -1,4 +1,5 @@
 from IPython.display import display
+from darts import concatenate
 from darts import TimeSeries
 import json
 import numpy as np
@@ -277,3 +278,23 @@ def adjust_outliers(data, columns, granularity='month'):
 def create_timeseries(df, col):
   """Creates a TimeSeries object for the given column with data type float 32 for quicker training/processing."""
   return TimeSeries.from_dataframe(df[['date', col]], 'date', col).astype(np.float32) 
+
+def get_covariate_ts(df):
+    df = df.copy()
+    
+    """Returns timeseries objects for the combined covariates. """
+    
+    time_series = {
+        'covariates': {}
+        }
+
+    df.reset_index(inplace=True)
+    
+    for col in df.columns[2:]:
+        time_series['covariates'][col] = pf.create_timeseries(df, col)
+
+    # create stacked timeseries for the covariates
+    covariates_ts = concatenate([ts for ts in time_series['covariates'].values()],
+                              axis=1)
+
+    return covariates_ts
