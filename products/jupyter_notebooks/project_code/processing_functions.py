@@ -329,3 +329,14 @@ def post_hyperparam_results(results, file, mode='a'):
     except Exception as e:
         print('Unable to save results to file')
         print(e)
+
+def read_json_file(file, output_type='dict'):
+    """Reads in json file and returns a dictionary or pandas dataframe."""
+
+    with open(file) as json_file:
+        if output_type == 'dict':
+            data = json.load(json_file)
+        elif output_type == 'df':
+            data = pd.read_json(json_file)
+
+    return data 
