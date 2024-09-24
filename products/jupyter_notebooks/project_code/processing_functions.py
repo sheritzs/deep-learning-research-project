@@ -297,3 +297,25 @@ def get_covariate_ts(df):
                               axis=1)
 
     return covariates_ts
+
+def get_clean_df(df, agg_cols):
+    """Aggregates data and removes outliers on a per-month basis. """
+    df = df.copy()
+    df['time'] = pd.to_datetime(df['time'])
+    
+    # create daily aggregations 
+    df = daily_aggregations_v2(df, agg_cols)
+    df.drop(['humidity_min', 'humidity_max'], axis=1, inplace=True)
+    df['temp_range'] = df['temp_max'] - df['temp_min']
+    df['month'] = df.index.month
+    
+    month_label_abbr = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug',
+               'Sep', 'Oct', 'Nov', 'Dec']
+    
+    cols_to_adjust = list(df.columns[:-1])
+    
+    df_clean = adjust_outliers(df, columns=cols_to_adjust, granularity='month')
+    df_clean.drop('month', axis=1, inplace=True)
+
+    return df_clean
+    
