@@ -319,3 +319,13 @@ def get_clean_df(df, agg_cols):
 
     return df_clean
     
+def post_hyperparam_results(results, file, mode='a'):
+    """Records the best hyper parameter search results to a .json file."""
+
+    try:
+        with open(file, mode) as output_file:
+            json.dump(results, output_file)
+            print(f'Successfully posted results to {file}')
+    except Exception as e:
+        print('Unable to save results to file')
+        print(e)
