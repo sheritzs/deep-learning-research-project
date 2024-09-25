@@ -134,47 +134,30 @@ def daily_aggregations(dataframe):
 
     return daily_data
 
-def daily_aggregations_v2(dataframe, agg_cols):
+def daily_aggregations_v2(dataframe):
     """Aggregates the weather data at a daily level of granularity."""
     
     df_copy = dataframe.copy()
     df_copy['date'] = df_copy['time'].dt.normalize()
     df_copy = df_copy.set_index('date')
     
-    daily_data = df_copy.loc[:, ['sunshine_duration']].resample('D').sum()
+    
+    stat_by_variable = {
+        'sunshine_duration': 'sum',
+        'humidity': 'mean',
+    }
+    
+    # aggregate at the daily level 
+    daily_data = df_copy.resample('D').agg(stat_by_variable) 
+    df_temp = df_copy['temp'].resample('D').agg([np.min, np.mean, np.max])
+    df_temp.columns = [f'temp_{col}' for col in df_temp.columns]
     
     # convert to hourly values 
-    daily_data['sunshine_hr'] = daily_data['sunshine_duration'] / 3600
+    daily_data['sunshine_hr'] = daily_data['sunshine_duration'] / 3600 
     
-    # # Compute min, mean, and max values
+    daily_data.drop(columns='sunshine_duration', axis=1, inplace=True)
+    daily_data = pd.merge(daily_data, df_temp, left_index=True, right_index=True)
     
-    # # minimum aggregations
-    mins = df_copy[agg_cols].resample('D').min()
-    col_names_min = [f'{name}_min' for name in agg_cols]
-    mins.columns = col_names_min
-    
-    # # mean aggregations
-    means = df_copy[agg_cols].resample('D').mean()
-    col_names_mean = [f'{name}_mean' for name in agg_cols]
-    means.columns = col_names_mean
-    
-    # # max aggregations
-    maxes = df_copy[agg_cols].resample('D').max()
-    col_names_max = [f'{name}_max' for name in agg_cols]
-    maxes.columns = col_names_max
-    
-    # # merge the aggregated dataframes
-    for df in [mins, means, maxes]:
-        daily_data = pd.merge(daily_data, df, left_index=True, right_index=True)
-    
-    daily_data = daily_data.drop(columns='sunshine_duration').round(3)
-    
-    # # reorder the columns to display sunshine_hr first
-    reordered_columns = sorted([col for col in daily_data if col != 'sunshine_hr'])
-    reordered_columns.insert(0, 'sunshine_hr')
-    
-    daily_data = daily_data[reordered_columns]
-
     return daily_data
 
 def get_season(month_day, data_type='string'):
