@@ -152,9 +152,10 @@ def daily_aggregations_v2(dataframe):
     df_temp.columns = [f'temp_{col}' for col in df_temp.columns]
     
     # convert to hourly values 
-    daily_data['sunshine_hr'] = daily_data['sunshine_duration'] / 3600 
+    daily_data['sunshine_duration'] = daily_data['sunshine_duration'] / 3600 
+    daily_data.rename(columns={'sunshine_duration': 'sunshine_hr',
+                               'humidity': 'humidity_mean'}, inplace=True)
     
-    daily_data.drop(columns='sunshine_duration', axis=1, inplace=True)
     daily_data = pd.merge(daily_data, df_temp, left_index=True, right_index=True)
 
     # reorder the columns to display sunshine_hr first
