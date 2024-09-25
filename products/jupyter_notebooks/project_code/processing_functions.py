@@ -141,7 +141,6 @@ def daily_aggregations_v2(dataframe):
     df_copy['date'] = df_copy['time'].dt.normalize()
     df_copy = df_copy.set_index('date')
     
-    
     stat_by_variable = {
         'sunshine_duration': 'sum',
         'humidity': 'mean',
@@ -157,8 +156,12 @@ def daily_aggregations_v2(dataframe):
     
     daily_data.drop(columns='sunshine_duration', axis=1, inplace=True)
     daily_data = pd.merge(daily_data, df_temp, left_index=True, right_index=True)
+
+    # reorder the columns to display sunshine_hr first
+    reordered_columns = [col for col in daily_data if col != 'sunshine_hr']
+    reordered_columns.insert(0, 'sunshine_hr')
     
-    return daily_data
+    return daily_data[reordered_columns]
 
 def get_season(month_day, data_type='string'):
     """
