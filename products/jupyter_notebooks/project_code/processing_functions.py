@@ -5,6 +5,7 @@ import json
 import numpy as np
 import optuna
 import pandas as pd
+import re
 import time
 import urllib.request
 
@@ -26,6 +27,20 @@ from tqdm.notebook import tqdm
 # metrics
 from darts.metrics import mae, r2_score, rmse
 
+SEED = 0
+FORECAST_HORIZONS = [1, 3, 7, 14, 30]
+SEED = 0
+
+file_path_data = 'data/'
+file_path_results = 'results/'
+file_path_models = 'models/'
+
+file_name_o = 'weather_bbm_incl_outliers.csv'
+file_name_no = 'weather_bbm_clean.csv'
+file_name_hyperparams = 'hyperparam_opt_results.json'
+
+file_hyperparams = f'{file_path_models}{file_name_hyperparams}'
+file_experiment_results = f'{file_path_results}experiment_results.json'
 
 
 def download_data(api_call: str, file_path: str, file_name: str):
@@ -510,3 +525,49 @@ def get_model(model_name, fh, hyp_params, version=None):
 
 
     return model, model_name_unique
+
+def get_reformatted_hyperparams(hyp_dict):
+
+    """
+    Accepts a dictionary with the results of hyperparameter tuning and returns a reformatted version
+    for the machine learning experiments.
+    """
+
+    new_hyp_dict = {
+
+        'gru': {fh: {} for fh in FORECAST_HORIZONS},
+        'lgbm': {fh: {} for fh in FORECAST_HORIZONS},
+        'lstm': {fh: {} for fh in FORECAST_HORIZONS},
+        'nbeats': {
+            'generic': {fh: {} for fh in FORECAST_HORIZONS},
+            'interpretable': {fh: {} for fh in FORECAST_HORIZONS}
+        },
+        'xgboost': {fh: {} for fh in FORECAST_HORIZONS}
+    }
+
+
+    for hyp_name, values in hyp_dict.items():
+
+        if len(hyp_name.split('_')) == 3:
+
+            model_name_main, version, fh_str = hyp_name.split('_')
+            fh = int(re.search(r'(?:h)(.*)', fh_str).group(1))
+
+            new_hyp_dict[model_name_main][version][fh] = {
+                'parameters': values['best_parameters'],
+                'training_rmse': values['best_rmse'],
+                'hyp_search_time': values['hyperparam_search_time']
+            }
+
+        else:
+
+            model_name_main, fh_str = hyp_name.split('_')
+            fh = int(re.search(r'(?:h)(.*)', fh_str).group(1))
+
+            new_hyp_dict[model_name_main][fh] = {
+                'parameters': values['best_parameters'],
+                'training_rmse': values['best_rmse'],
+                'hyp_search_time': values['hyperparam_search_time']
+            }
+
+    return new_hyp_dict
