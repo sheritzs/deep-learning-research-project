@@ -43,6 +43,13 @@ file_name_hyperparams = 'hyperparam_opt_results.json'
 file_hyperparams = f'{file_path_models}{file_name_hyperparams}'
 file_experiment_results = f'{file_path_results}experiment_results.json'
 
+
+weather_data_outliers = pd.read_csv(f'{file_path_data}{file_name_o}',
+                   index_col='date')
+
+weather_data_clean = pd.read_csv(f'{file_path_data}{file_name_no}',
+                   index_col='date')
+
 global_results = {
     'model_name_proper': [],
     'model_name_unique': [],
@@ -652,3 +659,44 @@ def run_experiment(model, model_name, model_name_unique, outliers, cutoff_date, 
     pd.DataFrame(global_results).to_csv(file_name)
 
 
+def train_test_split(cutoff_date, outliers=False):
+
+    if outliers==False:
+
+        target = create_timeseries(weather_data_clean, 'sunshine_hr')
+
+        # create past covariates as stacked timeseries of exogenous variables
+        past_covariates = get_covariate_ts(weather_data_clean)
+
+        # create training and testing datasets
+        training_cutoff = pd.Timestamp(cutoff_date)
+
+        target_train, target_test = target.split_after(training_cutoff)
+        covariates_train, covariates_test = past_covariates.split_after(training_cutoff)
+
+        covariate_scaler = Scaler()
+        covariate_scaler.fit(covariates_train)
+        past_covariates_trf = covariate_scaler.transform(past_covariates)
+
+    elif outliers == True:
+
+        target = pf.create_timeseries(weather_data_outliers, 'sunshine_hr')
+
+        # create past covariates as stacked timeseries of exogenous variables
+        past_covariates = pf.get_covariate_ts(weather_data_outliers)
+
+        # create training and testing datasets
+        training_cutoff = pd.Timestamp(cutoff_date)
+
+        target_train, target_test = target.split_after(training_cutoff)
+        covariates_train, covariates_test = past_covariates.split_after(training_cutoff)
+
+        covariate_scaler = Scaler()
+        covariate_scaler.fit(covariates_train)
+        past_covariates_trf = covariate_scaler.transform(past_covariates)
+
+
+    if model_name == 'nbeats':
+        return target_train, target_test, past_covariates
+    else:
+        return target_train, target_test, past_covariates_trf
