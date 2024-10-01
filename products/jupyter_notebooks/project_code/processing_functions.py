@@ -363,3 +363,17 @@ def hyperparameter_search(objective, n_trials, model_name):
     }
 
     return results
+
+def generate_cutoff_date(start_date, end_date, n=1, seed=1, replace=False):
+    """Generates a random date from a given range (start_date to end_date) for the training cutoff."""
+    dates = pd.date_range(start_date, end_date).to_series()
+
+    dates = dates.sample(n, replace=replace, random_state=seed)
+
+    date = dates[0].strftime('%Y-%m-%d')
+
+    year, month, day = [int(x) for x in date.split('-')]
+
+    cutoff_date = f'{year}-{month}-{day}'
+
+    return cutoff_date
