@@ -27,6 +27,7 @@ from tqdm.notebook import tqdm
 # metrics
 from darts.metrics import mae, r2_score, rmse
 
+# PARAMETERS
 SEED = 0
 FORECAST_HORIZONS = [1, 3, 7, 14, 30]
 SEED = 0
@@ -41,6 +42,20 @@ file_name_hyperparams = 'hyperparam_opt_results.json'
 
 file_hyperparams = f'{file_path_models}{file_name_hyperparams}'
 file_experiment_results = f'{file_path_results}experiment_results.json'
+
+global_results = {
+    'model_name_proper': [],
+    'model_name_unique': [],
+    'outlier_indicator': [],
+    'forecast_horizon': [],
+    'rmse': [],
+    'mae': [],
+    'best_val_rmse': [],
+    'training_time': [],
+    'hyp_search_time': [],
+    'total_time': []
+}
+
 
 
 def download_data(api_call: str, file_path: str, file_name: str):
@@ -571,3 +586,69 @@ def get_reformatted_hyperparams(hyp_dict):
             }
 
     return new_hyp_dict
+
+def run_experiment(model, model_name, model_name_unique, outliers, cutoff_date, fh):
+    """Runs an experiment and saves the results to a file."""
+
+    # get training and testing data (only complete past covariate min-max scaling for non-N-BEATS models)
+    if model_name == 'nbeats':
+        target_train, target_test, past_covariates = train_test_split(cutoff_date, outliers=outliers)
+    else:
+        target_train, target_test, past_covariates_trf = train_test_split(cutoff_date, outliers=outliers)
+
+    proper_name = MODEL_NAMES[model_name]
+    print(f'\nRunning {proper_name} Experiments - Outliers = {outliers}...\n')
+
+    start_time = time.perf_counter()
+
+    if model_name in ['naive_seasonal', 'exponential_smoothing']:
+        model.fit(series=target_train)
+
+    elif model_name == 'nbeats':
+        model.fit(series=target_train,
+                past_covariates=past_covariates,
+                verbose=False)
+        model.save(f'{file_path_models}{model_name}_fh{fh}_fitted.pt')
+
+    else:
+        model.fit(series=target_train,
+                past_covariates=past_covariates_trf)
+        model.save(f'{file_path_models}{model_name}_fh{fh}_fitted.pkl')
+
+    y_pred = model.predict(n=fh)
+    rmse_score = rmse(y_pred, target_test[:fh])
+    mae_score = mae(y_pred, target_test[:fh])
+
+    end_time = time.perf_counter()
+    training_time = (end_time - start_time) / 60
+
+
+    if model_name not in ['naive_seasonal', 'exponential_smoothing']:
+        hyp_search_time = hyper_params[model_name_unique]['hyperparam_search_time']
+        best_val_rmse = hyper_params[model_name_unique]['best_rmse']
+    else:
+        hyp_search_time = np.nan
+        best_val_rmse = np.nan
+
+
+    total_time = round(training_time + hyp_search_time, 2)
+
+    # Record results
+    global_results['model_name_proper'].append(proper_name)
+    global_results['model_name_unique'].append(model_name_unique)
+    global_results['outlier_indicator'].append(outliers)
+    global_results['forecast_horizon'].append(fh)
+    global_results['rmse'].append(rmse_score)
+    global_results['mae'].append(mae_score)
+    global_results['best_val_rmse'].append(best_val_rmse)
+    global_results['training_time'].append(training_time)
+    global_results['hyp_search_time'].append(hyp_search_time)
+    global_results['total_time'].append(total_time)
+
+    if model_name == 'nbeats': # breaking up the N-BEATS experiements into False/True re: Outliers purely to avoid Colab execution timeout and progress/data loss 
+        file_name = f'{file_path_results}{model_name}_outliers-{outliers}_experiment_results.csv'
+    else:
+        file_name = f'{file_path_results}{model_name}_experiment_results.csv'
+    pd.DataFrame(global_results).to_csv(file_name)
+
+
