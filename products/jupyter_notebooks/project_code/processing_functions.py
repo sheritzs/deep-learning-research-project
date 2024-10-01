@@ -8,6 +8,25 @@ import pandas as pd
 import time
 import urllib.request
 
+from darts.models import (BlockRNNModel, ExponentialSmoothing, LightGBMModel, NBEATSModel,
+                          XGBModel)
+from darts.models.forecasting.baselines import NaiveSeasonal
+from darts.models.forecasting.torch_forecasting_model import _get_checkpoint_folder
+from darts.utils.callbacks import TFMProgressBar
+from darts.utils.timeseries_generation import datetime_attribute_timeseries as dt_attr
+from darts.utils.utils import ModelMode, SeasonalityMode
+import optuna
+import pytorch_lightning as pl
+from pytorch_lightning.callbacks import Callback, ModelCheckpoint
+from pytorch_lightning import LightningModule
+from pytorch_lightning import Trainer
+import torch
+from tqdm.notebook import tqdm
+
+# metrics
+from darts.metrics import mae, r2_score, rmse
+
+
 
 def download_data(api_call: str, file_path: str, file_name: str):
     """
@@ -377,3 +396,117 @@ def generate_cutoff_date(start_date, end_date, n=1, seed=1, replace=False):
     cutoff_date = f'{year}-{month}-{day}'
 
     return cutoff_date
+
+def get_model(model_name, fh, hyp_params, version=None):
+
+    """Returns an unfitted model based on the given name, forecast horizon,
+     hyperparameter dictionary, and model version (in the case of N-BEATS)."""
+
+    if model_name not in ['naive_seasonal', 'exponential_smoothing']:
+        hyp = hyp_params[model_name]
+
+    if model_name in ['lstm', 'gru', 'nbeats', 'nhits']:
+
+        torch.manual_seed(SEED)
+
+        model_name_fh = f'{model_name}_{fh}'
+
+        checkpoint_name = f'{model_name}_ckpt'
+
+        checkpoint_callback = ModelCheckpoint(
+            monitor='train_torchmetrics',
+            filename='best-{epoch}-{MeanAbsoluteError:.2f}',
+            dirpath= _get_checkpoint_folder(
+                work_dir = os.path.join(os.getcwd(), "darts_logs"),
+                model_name = model_name_fh,
+            )
+        )
+
+        # detect whether a GPU is available
+        # print(f'Available GPU: {torch.cuda.is_available()}\n')
+        if torch.cuda.is_available():
+            pl_trainer_kwargs = {
+                'accelerator': 'gpu',
+                'callbacks': [checkpoint_callback],
+            }
+        else:
+            pl_trainer_kwargs = {'callbacks': [checkpoint_callback]}
+
+
+        if model_name in ['lstm', 'gru']:
+
+            model = BlockRNNModel(
+                # n_epochs = 2, #TODO: DELETE AND USE PROPER EPOCH
+                model = model_name.upper(),
+                input_chunk_length = hyp[fh]['parameters']['input_chunk_length'],
+                output_chunk_length = fh,
+                batch_size =  hyp[fh]['parameters']['batch_size'],
+                n_epochs = hyp[fh]['parameters']['n_epochs'],
+                hidden_dim = hyp[fh]['parameters']['hidden_dim'],
+                n_rnn_layers = hyp[fh]['parameters']['n_rnn_layers'],
+                dropout = hyp[fh]['parameters']['dropout'],
+                pl_trainer_kwargs = pl_trainer_kwargs,
+                optimizer_kwargs = {'lr': hyp[fh]['parameters']['lr'] },
+                log_tensorboard=True,
+                model_name = model_name_fh,
+                save_checkpoints=True,
+                force_reset=True
+
+            )
+
+        elif model_name == 'nbeats':
+
+            model = NBEATSModel(
+                random_state=1,
+                input_chunk_length = hyp[version][fh]['parameters']['input_chunk_length'],
+                output_chunk_length = fh,
+                batch_size = hyp[version][fh]['parameters']['batch_size'],
+                n_epochs = hyp[version][fh]['parameters']['n_epochs'],
+                dropout = hyp[version][fh]['parameters']['dropout'],
+                activation =  hyp[version][fh]['parameters']['activation'],
+                generic_architecture=True if version == 'generic' else False,
+                pl_trainer_kwargs = pl_trainer_kwargs,
+                optimizer_kwargs = {'lr': hyp[version][fh]['parameters']['lr'] },
+                log_tensorboard=True,
+                model_name = model_name_fh,
+                save_checkpoints=True,
+                force_reset=True
+            )
+
+        model.save(f'{file_path_models}{model_name}_fh{fh}.pt')
+
+    else:
+
+        if model_name == 'naive_seasonal':
+            model = NaiveSeasonal(K=365)
+
+        elif model_name == 'exponential_smoothing':
+            model = ExponentialSmoothing(trend=ModelMode.ADDITIVE,
+                                    seasonal=SeasonalityMode.ADDITIVE,
+                                    seasonal_periods=365)
+
+        elif model_name == 'xgboost':
+            model = XGBModel(
+                lags = hyp[fh]['parameters']['lags'],
+                lags_past_covariates = hyp[fh]['parameters']['lags_past_covariates'],
+                output_chunk_length = fh
+            )
+
+        elif model_name == 'lgbm':
+            model = LightGBMModel(
+                lags = hyp[fh]['parameters']['lags'],
+                lags_past_covariates = hyp[fh]['parameters']['lags_past_covariates'],
+                output_chunk_length = fh,
+                verbose=-1
+            )
+
+        model.save(f'{file_path_models}{model_name}_fh{fh}.pkl')
+
+
+    if model_name == 'nbeats':
+            model_name_unique = f'{model_name}_{version}_fh{fh}'
+    else:
+        model_name_unique = f'{model_name}_fh{fh}'
+
+
+    return model, model_name_unique
