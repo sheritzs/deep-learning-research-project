@@ -32,38 +32,6 @@ SEED = 0
 FORECAST_HORIZONS = [1, 3, 7, 14, 30]
 SEED = 0
 
-file_path_data = 'data/'
-file_path_results = 'results/'
-file_path_models = 'models/'
-
-file_name_o = 'weather_bbm_incl_outliers.csv'
-file_name_no = 'weather_bbm_clean.csv'
-file_name_hyperparams = 'hyperparam_opt_results.json'
-
-file_hyperparams = f'{file_path_models}{file_name_hyperparams}'
-file_experiment_results = f'{file_path_results}experiment_results.json'
-
-
-weather_data_outliers = pd.read_csv(f'{file_path_data}{file_name_o}',
-                   index_col='date')
-
-weather_data_clean = pd.read_csv(f'{file_path_data}{file_name_no}',
-                   index_col='date')
-
-global_results = {
-    'model_name_proper': [],
-    'model_name_unique': [],
-    'outlier_indicator': [],
-    'forecast_horizon': [],
-    'rmse': [],
-    'mae': [],
-    'best_val_rmse': [],
-    'training_time': [],
-    'hyp_search_time': [],
-    'total_time': []
-}
-
-
 
 def download_data(api_call: str, file_path: str, file_name: str):
     """
