@@ -4,11 +4,13 @@ from darts import TimeSeries
 import json
 import numpy as np
 import optuna
+import os
 import pandas as pd
 import re
 import time
 import urllib.request
 
+from darts.dataprocessing.transformers import Scaler
 from darts.models import (BlockRNNModel, ExponentialSmoothing, LightGBMModel, NBEATSModel,
                           XGBModel)
 from darts.models.forecasting.baselines import NaiveSeasonal
@@ -26,11 +28,6 @@ from tqdm.notebook import tqdm
 
 # metrics
 from darts.metrics import mae, r2_score, rmse
-
-# PARAMETERS
-SEED = 0
-FORECAST_HORIZONS = [1, 3, 7, 14, 30]
-SEED = 0
 
 
 def download_data(api_call: str, file_path: str, file_name: str):
@@ -354,6 +351,10 @@ def read_json_file(file, output_type='dict'):
 
     return data 
 
+def print_callback(study, trial):
+  print(f"Current value: {trial.value}, Current params: {trial.params}")
+  print(f"Current Best value: {study.best_value}, Best params: {study.best_trial.params}")
+
 def hyperparameter_search(objective, n_trials, model_name):
     """
     Completes an Optuna hyperparameter search and returns the results 
@@ -388,7 +389,7 @@ def hyperparameter_search(objective, n_trials, model_name):
 
     return results
 
-def generate_cutoff_date(start_date, end_date, n=1, seed=1, replace=False):
+def generate_cutoff_date(start_date, end_date, seed, n=1, replace=False):
     """Generates a random date from a given range (start_date to end_date) for the training cutoff."""
     dates = pd.date_range(start_date, end_date).to_series()
 
@@ -402,7 +403,7 @@ def generate_cutoff_date(start_date, end_date, n=1, seed=1, replace=False):
 
     return cutoff_date
 
-def get_model(model_name, fh, hyp_params, version=None):
+def get_model(model_name, fh, hyp_params, model_file_path, seed, version=None):
 
     """Returns an unfitted model based on the given name, forecast horizon,
      hyperparameter dictionary, and model version (in the case of N-BEATS)."""
@@ -412,7 +413,7 @@ def get_model(model_name, fh, hyp_params, version=None):
 
     if model_name in ['lstm', 'gru', 'nbeats', 'nhits']:
 
-        torch.manual_seed(SEED)
+        torch.manual_seed(seed)
 
         model_name_fh = f'{model_name}_{fh}'
 
@@ -441,7 +442,6 @@ def get_model(model_name, fh, hyp_params, version=None):
         if model_name in ['lstm', 'gru']:
 
             model = BlockRNNModel(
-                # n_epochs = 2, #TODO: DELETE AND USE PROPER EPOCH
                 model = model_name.upper(),
                 input_chunk_length = hyp[fh]['parameters']['input_chunk_length'],
                 output_chunk_length = fh,
@@ -478,7 +478,7 @@ def get_model(model_name, fh, hyp_params, version=None):
                 force_reset=True
             )
 
-        model.save(f'{file_path_models}{model_name}_fh{fh}.pt')
+        model.save(f'{model_file_path}{model_name}_fh{fh}.pt')
 
     else:
 
@@ -505,7 +505,7 @@ def get_model(model_name, fh, hyp_params, version=None):
                 verbose=-1
             )
 
-        model.save(f'{file_path_models}{model_name}_fh{fh}.pkl')
+        model.save(f'{model_file_path}{model_name}_fh{fh}.pkl')
 
 
     if model_name == 'nbeats':
@@ -516,7 +516,7 @@ def get_model(model_name, fh, hyp_params, version=None):
 
     return model, model_name_unique
 
-def get_reformatted_hyperparams(hyp_dict):
+def get_reformatted_hyperparams(hyp_dict, forecast_horizons):
 
     """
     Accepts a dictionary with the results of hyperparameter tuning and returns a reformatted version
@@ -525,14 +525,14 @@ def get_reformatted_hyperparams(hyp_dict):
 
     new_hyp_dict = {
 
-        'gru': {fh: {} for fh in FORECAST_HORIZONS},
-        'lgbm': {fh: {} for fh in FORECAST_HORIZONS},
-        'lstm': {fh: {} for fh in FORECAST_HORIZONS},
+        'gru': {fh: {} for fh in forecast_horizons},
+        'lgbm': {fh: {} for fh in forecast_horizons},
+        'lstm': {fh: {} for fh in forecast_horizons},
         'nbeats': {
-            'generic': {fh: {} for fh in FORECAST_HORIZONS},
-            'interpretable': {fh: {} for fh in FORECAST_HORIZONS}
+            'generic': {fh: {} for fh in forecast_horizons},
+            'interpretable': {fh: {} for fh in forecast_horizons}
         },
-        'xgboost': {fh: {} for fh in FORECAST_HORIZONS}
+        'xgboost': {fh: {} for fh in forecast_horizons}
     }
 
 
@@ -562,17 +562,23 @@ def get_reformatted_hyperparams(hyp_dict):
 
     return new_hyp_dict
 
-def run_experiment(model, model_name, model_name_unique, outliers, cutoff_date, fh):
+
+def run_experiment(model, model_names, hyper_parameters, cutoff_date, fh,
+                   df_outliers, df_clean, outliers, global_results, 
+                   model_file_path, results_path_file):
     """Runs an experiment and saves the results to a file."""
+
+    model_name = model_names[0]
+    model_name_proper = model_names[1]
+    model_name_unique = model_names[2]
 
     # get training and testing data (only complete past covariate min-max scaling for non-N-BEATS models)
     if model_name == 'nbeats':
-        target_train, target_test, past_covariates = train_test_split(cutoff_date, outliers=outliers)
+        target_train, target_test, past_covariates = train_test_split(df_outliers, df_clean, cutoff_date, outliers=outliers, nbeats=True)
     else:
-        target_train, target_test, past_covariates_trf = train_test_split(cutoff_date, outliers=outliers)
+        target_train, target_test, past_covariates_trf = train_test_split(df_outliers, df_clean, cutoff_date, outliers=outliers)
 
-    proper_name = MODEL_NAMES[model_name]
-    print(f'\nRunning {proper_name} Experiments - Outliers = {outliers}...\n')
+    print(f'\nRunning {model_name_proper} Experiments - Forecast Horizon: {fh} | Outliers: {outliers}...\n')
 
     start_time = time.perf_counter()
 
@@ -583,12 +589,12 @@ def run_experiment(model, model_name, model_name_unique, outliers, cutoff_date, 
         model.fit(series=target_train,
                 past_covariates=past_covariates,
                 verbose=False)
-        model.save(f'{file_path_models}{model_name}_fh{fh}_fitted.pt')
+        model.save(f'{model_file_path}{model_name}_fh{fh}_fitted.pt')
 
     else:
         model.fit(series=target_train,
                 past_covariates=past_covariates_trf)
-        model.save(f'{file_path_models}{model_name}_fh{fh}_fitted.pkl')
+        model.save(f'{model_file_path}{model_name}_fh{fh}_fitted.pkl')
 
     y_pred = model.predict(n=fh)
     rmse_score = rmse(y_pred, target_test[:fh])
@@ -599,8 +605,8 @@ def run_experiment(model, model_name, model_name_unique, outliers, cutoff_date, 
 
 
     if model_name not in ['naive_seasonal', 'exponential_smoothing']:
-        hyp_search_time = hyper_params[model_name_unique]['hyperparam_search_time']
-        best_val_rmse = hyper_params[model_name_unique]['best_rmse']
+        hyp_search_time = hyper_parameters[model_name_unique]['hyperparam_search_time']
+        best_val_rmse = hyper_parameters[model_name_unique]['best_rmse']
     else:
         hyp_search_time = np.nan
         best_val_rmse = np.nan
@@ -609,7 +615,7 @@ def run_experiment(model, model_name, model_name_unique, outliers, cutoff_date, 
     total_time = round(training_time + hyp_search_time, 2)
 
     # Record results
-    global_results['model_name_proper'].append(proper_name)
+    global_results['model_name_proper'].append(model_names[1])
     global_results['model_name_unique'].append(model_name_unique)
     global_results['outlier_indicator'].append(outliers)
     global_results['forecast_horizon'].append(fh)
@@ -621,20 +627,20 @@ def run_experiment(model, model_name, model_name_unique, outliers, cutoff_date, 
     global_results['total_time'].append(total_time)
 
     if model_name == 'nbeats': # breaking up the N-BEATS experiements into False/True re: Outliers purely to avoid Colab execution timeout and progress/data loss 
-        file_name = f'{file_path_results}{model_name}_outliers-{outliers}_experiment_results.csv'
+        file_name = f'{results_path_file}{model_name}_outliers-{outliers}_experiment_results.csv'
     else:
-        file_name = f'{file_path_results}{model_name}_experiment_results.csv'
+        file_name = f'{results_path_file}{model_name}_experiment_results.csv'
     pd.DataFrame(global_results).to_csv(file_name)
 
 
-def train_test_split(cutoff_date, outliers=False):
+def train_test_split(df_outliers, df_clean, cutoff_date, outliers=False, nbeats=False):
 
     if outliers==False:
 
-        target = create_timeseries(weather_data_clean, 'sunshine_hr')
+        target = create_timeseries(df_clean, 'sunshine_hr')
 
         # create past covariates as stacked timeseries of exogenous variables
-        past_covariates = get_covariate_ts(weather_data_clean)
+        past_covariates = get_covariate_ts(df_clean)
 
         # create training and testing datasets
         training_cutoff = pd.Timestamp(cutoff_date)
@@ -648,10 +654,10 @@ def train_test_split(cutoff_date, outliers=False):
 
     elif outliers == True:
 
-        target = pf.create_timeseries(weather_data_outliers, 'sunshine_hr')
+        target = create_timeseries(df_outliers, 'sunshine_hr')
 
         # create past covariates as stacked timeseries of exogenous variables
-        past_covariates = pf.get_covariate_ts(weather_data_outliers)
+        past_covariates = get_covariate_ts(df_outliers)
 
         # create training and testing datasets
         training_cutoff = pd.Timestamp(cutoff_date)
@@ -664,7 +670,7 @@ def train_test_split(cutoff_date, outliers=False):
         past_covariates_trf = covariate_scaler.transform(past_covariates)
 
 
-    if model_name == 'nbeats':
+    if nbeats:
         return target_train, target_test, past_covariates
     else:
         return target_train, target_test, past_covariates_trf
