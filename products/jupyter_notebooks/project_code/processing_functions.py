@@ -678,7 +678,7 @@ def train_test_split(df_outliers, df_clean, cutoff_date, outliers=False, nbeats=
 
 def highlight_maxormin(df, max=True, starting_col_idx=0):
     """"Highlights the minimum or maximum value in each row within a given df."""
-    df_styled = df.style.format("{:.1f}").hide()
+    df_styled = df.style.format("{:.2f}").hide()
 
     for row in df.index:
         if max:
