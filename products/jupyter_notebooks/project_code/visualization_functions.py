@@ -2,6 +2,8 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import plotly.graph_objs as go
+from plotly.subplots import make_subplots
 import seaborn as sns
 from statsmodels.tsa.seasonal import STL
 
@@ -400,3 +402,47 @@ def generate_boxplots(data, columns, y_labels, alternate_x_labels=None,
 
         plt.show()
 
+def dual_bar_chart(df, x,
+                   y1, y2,
+                   y1_label, y2_label,
+                   y1_color, y2_color,
+                   font_size):
+
+    """Plots a dual y-axis grouped bar chart. """
+    fig = make_subplots(specs=[[{"secondary_y": True}]])
+
+
+
+    fig.add_trace(go.Bar(x=df[x], y=df[y1], name=y1_label,
+                        marker_color = y1_color,offsetgroup=1, text=round(df[y1],3)), secondary_y=False)
+
+    fig.add_trace(go.Bar(x=df[x], y=df[y2], name=y2_label,
+                        marker_color = y2_color,offsetgroup=2, text=round(df[y2],3)), secondary_y=True)
+
+    fig.update_layout(
+        barmode='group',
+        font_size = font_size,
+        hovermode="x unified",
+        plot_bgcolor='white'
+        )
+
+    fig.update_xaxes(
+        # mirror=True,
+        ticks='outside',
+        showline=True,
+        # linecolor='black',
+        gridcolor='lightgrey'
+    )
+
+    fig.update_yaxes(
+    # mirror=True,
+    ticks='outside',
+    showline=True,
+    # linecolor='black',
+    gridcolor='lightgrey'
+    )
+
+    fig.update_yaxes(title_text=y2_label, secondary_y=True)
+    fig.update_yaxes(title_text=y1_label, secondary_y=False)
+
+    fig.show()
