@@ -414,10 +414,10 @@ def dual_bar_chart(df, x,
 
 
     fig.add_trace(go.Bar(x=df[x], y=df[y1], name=y1_label,
-                        marker_color = y1_color,offsetgroup=1, text=round(df[y1],3)), secondary_y=False)
+                        marker_color = y1_color,offsetgroup=1, text=round(df[y1],2)), secondary_y=False)
 
     fig.add_trace(go.Bar(x=df[x], y=df[y2], name=y2_label,
-                        marker_color = y2_color,offsetgroup=2, text=round(df[y2],3)), secondary_y=True)
+                        marker_color = y2_color,offsetgroup=2, text=round(df[y2],2)), secondary_y=True)
 
     fig.update_layout(
         barmode='group',
@@ -427,18 +427,14 @@ def dual_bar_chart(df, x,
         )
 
     fig.update_xaxes(
-        # mirror=True,
         ticks='outside',
         showline=True,
-        # linecolor='black',
         gridcolor='lightgrey'
     )
 
     fig.update_yaxes(
-    # mirror=True,
     ticks='outside',
     showline=True,
-    # linecolor='black',
     gridcolor='lightgrey'
     )
 
