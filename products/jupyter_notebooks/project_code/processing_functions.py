@@ -1,6 +1,7 @@
 from IPython.display import display
 from darts import concatenate
 from darts import TimeSeries
+import glob
 import json
 import numpy as np
 import optuna
@@ -773,3 +774,24 @@ def hyperparameter_search(objective, n_trials, model_name):
     }}
 
     return results
+
+def get_best_num_epochs(model_name):
+    """Searches through the checkpoint folders to retrieve epoch details for the lowest validation loss."""
+
+    current_best_val_loss = float('inf')
+    current_best_epoch = 0
+
+    for folder in glob.glob(f'darts_logs/{model_name}_*'):
+        best_epoch_files = glob.glob(f'{folder}/checkpoints/best-epoch*')
+
+        for e_file in best_epoch_files:
+            m1 = re.search('best-epoch=(.*)-val', e_file)
+            best_num_epochs = int(m1.group(1))
+            m2 = re.search('val_loss=(.*).ckpt', e_file)
+            val_loss = float(m2.group(1))
+
+            if val_loss < current_best_val_loss:
+                current_best_val_loss = val_loss
+                current_best_epoch = best_num_epochs
+                
+    return current_best_epoch
