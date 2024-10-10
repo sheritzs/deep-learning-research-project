@@ -29,7 +29,7 @@ import torch
 from tqdm.notebook import tqdm
 
 # metrics
-from darts.metrics import mae, r2_score, rmse
+from darts.metrics import mae, rmse
 
 
 def download_data(api_call: str, file_path: str, file_name: str):
@@ -778,20 +778,20 @@ def hyperparameter_search(objective, n_trials, model_name):
 def get_best_num_epochs(model_name):
     """Searches through the checkpoint folders to retrieve epoch details for the lowest validation loss."""
 
-    current_best_val_loss = float('inf')
-    current_best_epoch = 0
+    best_val_loss = float('inf')
+    best_num_epochs = 0
 
     for folder in glob.glob(f'darts_logs/{model_name}_*'):
         best_epoch_files = glob.glob(f'{folder}/checkpoints/best-epoch*')
 
         for e_file in best_epoch_files:
             m1 = re.search('best-epoch=(.*)-val', e_file)
-            best_num_epochs = int(m1.group(1))
+            num_epochs = int(m1.group(1))
             m2 = re.search('val_loss=(.*).ckpt', e_file)
             val_loss = float(m2.group(1))
 
-            if val_loss < current_best_val_loss:
-                current_best_val_loss = val_loss
-                current_best_epoch = best_num_epochs
+            if val_loss < best_val_loss:
+                best_val_loss = val_loss
+                best_num_epochs = num_epochs
                 
-    return current_best_epoch
+    return best_num_epochs
