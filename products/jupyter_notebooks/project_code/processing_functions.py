@@ -744,4 +744,7 @@ class PyTorchLightningPruningCallback(Callback):
             raise optuna.TrialPruned(message)
 
 
-
+def print_callback(study, trial):
+  """Optional callback for sanity checks during Optuna trials."""
+  print(f"Current value: {trial.value}, Current params: {trial.params}")
+  print(f"Current Best value: {study.best_value}, Best params: {study.best_trial.params}")
