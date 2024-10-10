@@ -1,6 +1,7 @@
 from IPython.display import display
 from darts import concatenate
 from darts import TimeSeries
+import glob
 import json
 import numpy as np
 import optuna
@@ -9,6 +10,7 @@ import pandas as pd
 import re
 import time
 import urllib.request
+import warnings
 
 from darts.dataprocessing.transformers import Scaler
 from darts.models import (BlockRNNModel, ExponentialSmoothing, LightGBMModel, NBEATSModel,
@@ -691,3 +693,105 @@ def highlight_maxormin(df, max=True, starting_col_idx=0):
 
 
     return df_styled
+
+
+class PyTorchLightningPruningCallback(Callback):
+    """
+    PyTorch Lightning callback to prune unpromising trials
+    and address minor issue due to PyTorch-lighting default sanity check value.
+    source: https://github.com/optuna/optuna-examples/issues/166#issuecomment-1403112861
+
+    if you want to add a pruning callback which observes accuracy.
+    Args:
+        trial:
+            A :class:`~optuna.trial.Trial` corresponding to the current evaluation of the
+            objective function.
+        monitor:
+            An evaluation metric for pruning, e.g., ``val_loss`` or
+            ``val_acc``. The metrics are obtained from the returned dictionaries from e.g.
+            ``pytorch_lightning.LightningModule.training_step`` or
+            ``pytorch_lightning.LightningModule.validation_epoch_end`` and the names thus depend on
+            how this dictionary is formatted.
+    """
+
+    def __init__(self, trial: optuna.trial.Trial, monitor: str) -> None:
+        super().__init__()
+
+        self._trial = trial
+        self.monitor = monitor
+
+    def on_validation_end(self, trainer: Trainer, pl_module: LightningModule) -> None:
+        # When the trainer calls `on_validation_end` for sanity check,
+        # do not call `trial.report` to avoid calling `trial.report` multiple times
+        # at epoch 0. The related page is
+        # https://github.com/PyTorchLightning/pytorch-lightning/issues/1391.
+        if trainer.sanity_checking:
+            return
+
+        epoch = pl_module.current_epoch
+
+        current_score = trainer.callback_metrics.get(self.monitor)
+        if current_score is None:
+            message = (
+                "The metric '{}' is not in the evaluation logs for pruning. "
+                "Please make sure you set the correct metric name.".format(self.monitor)
+            )
+            warnings.warn(message)
+            return
+
+        self._trial.report(current_score, step=epoch)
+        if self._trial.should_prune():
+            message = "Trial was pruned at epoch {}.".format(epoch)
+            raise optuna.TrialPruned(message)
+
+def print_callback(study, trial):
+  """Optional callback for sanity checks during Optuna trials."""
+  print(f"Current value: {trial.value}, Current params: {trial.params}")
+  print(f"Current Best value: {study.best_value}, Best params: {study.best_trial.params}")
+
+def hyperparameter_search(objective, n_trials, model_name):
+    """
+    Completes an Optuna hyperparameter search and returns the results
+    after n_trials.
+     """
+    start_time = time.perf_counter()
+    study = optuna.create_study(direction='minimize')
+
+    # limit number of trials
+    study.optimize(objective, n_trials=n_trials)
+
+    end_time = time.perf_counter()
+    operation_runtime = round((end_time - start_time)/60, 2)
+
+    #print the best value and best hyperparameters:
+    # print(f'Best value: {study.best_value:.4f}\nBest parameters: {study.best_trial.params}')
+    # print(f'Operation runtime: {operation_runtime} minutes')
+
+    results = {model_name: {
+        'best_rmse': round(study.best_value, 4),
+        'best_parameters': study.best_trial.params,
+        'hyperparam_search_time': operation_runtime
+    }}
+
+    return results
+
+def get_best_num_epochs(model_name):
+    """Searches through the checkpoint folders to retrieve epoch details for the lowest validation loss."""
+
+    current_best_val_loss = float('inf')
+    current_best_epoch = 0
+
+    for folder in glob.glob(f'darts_logs/{model_name}_*'):
+        best_epoch_files = glob.glob(f'{folder}/checkpoints/best-epoch*')
+
+        for e_file in best_epoch_files:
+            m1 = re.search('best-epoch=(.*)-val', e_file)
+            best_num_epochs = int(m1.group(1))
+            m2 = re.search('val_loss=(.*).ckpt', e_file)
+            val_loss = float(m2.group(1))
+
+            if val_loss < current_best_val_loss:
+                current_best_val_loss = val_loss
+                current_best_epoch = best_num_epochs
+                
+    return current_best_epoch
