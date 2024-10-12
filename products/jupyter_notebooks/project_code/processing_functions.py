@@ -750,7 +750,7 @@ def get_best_num_epochs(model_name):
 
         for e_file in best_epoch_files:
             m1 = re.search('best-epoch=(.*)-val', e_file)
-            num_epochs = int(m1.group(1))
+            num_epochs = int(m1.group(1)) + 1 #add one because epoch count starts at 0
             m2 = re.search('val_loss=(.*).ckpt', e_file)
             val_loss = float(m2.group(1))
 
