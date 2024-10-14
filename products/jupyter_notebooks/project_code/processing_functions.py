@@ -377,20 +377,21 @@ def get_model(model_name, fh, hyp_params, model_file_path, seed, version=None):
     if model_name not in ['naive_seasonal', 'exponential_smoothing']:
         hyp = hyp_params[model_name]
 
+    if model_name == 'nbeats':
+        model_name_unique = f'{model_name}_{version}_fh{fh}'
+    else:
+        model_name_unique = f'{model_name}_fh{fh}'
+
     if model_name in ['lstm', 'gru', 'nbeats', 'nhits']:
 
         torch.manual_seed(seed)
-
-        model_name_fh = f'{model_name}_{fh}'
-
-        checkpoint_name = f'{model_name}_ckpt'
 
         checkpoint_callback = ModelCheckpoint(
             monitor='train_torchmetrics',
             filename='best-{epoch}-{MeanAbsoluteError:.2f}',
             dirpath= _get_checkpoint_folder(
                 work_dir = os.path.join(os.getcwd(), "darts_logs"),
-                model_name = model_name_fh,
+                model_name = model_name_unique,
             )
         )
 
@@ -419,10 +420,9 @@ def get_model(model_name, fh, hyp_params, model_file_path, seed, version=None):
                 pl_trainer_kwargs = pl_trainer_kwargs,
                 optimizer_kwargs = {'lr': hyp[fh]['parameters']['lr'] },
                 log_tensorboard=True,
-                model_name = model_name_fh,
+                model_name = model_name_unique,
                 save_checkpoints=True,
                 force_reset=True
-
             )
 
         elif model_name == 'nbeats':
@@ -439,12 +439,12 @@ def get_model(model_name, fh, hyp_params, model_file_path, seed, version=None):
                 pl_trainer_kwargs = pl_trainer_kwargs,
                 optimizer_kwargs = {'lr': hyp[version][fh]['parameters']['lr'] },
                 log_tensorboard=True,
-                model_name = model_name_fh,
+                model_name = model_name_unique,
                 save_checkpoints=True,
                 force_reset=True
             )
 
-        model.save(f'{model_file_path}{model_name}_fh{fh}.pt')
+        model.save(f'{model_file_path}{model_name_unique}.pt')
 
     else:
 
@@ -471,14 +471,7 @@ def get_model(model_name, fh, hyp_params, model_file_path, seed, version=None):
                 verbose=-1
             )
 
-        model.save(f'{model_file_path}{model_name}_fh{fh}.pkl')
-
-
-    if model_name == 'nbeats':
-            model_name_unique = f'{model_name}_{version}_fh{fh}'
-    else:
-        model_name_unique = f'{model_name}_fh{fh}'
-
+        model.save(f'{model_file_path}{model_name_unique}.pkl')
 
     return model, model_name_unique
 
@@ -740,22 +733,10 @@ def hyperparameter_search(objective, n_trials, model_name):
     return results
 
 def get_best_num_epochs(model_name):
-    """Searches through the checkpoint folders to retrieve epoch details for the lowest validation loss."""
+    """Retrieves epoch details corresponding to the lowest validation loss from checkpoint folders."""
 
-    best_val_loss = float('inf')
-    best_num_epochs = 0
-
-    for folder in glob.glob(f'darts_logs/{model_name}_*'):
-        best_epoch_files = glob.glob(f'{folder}/checkpoints/best-epoch*')
-
-        for e_file in best_epoch_files:
-            m1 = re.search('best-epoch=(.*)-val', e_file)
-            num_epochs = int(m1.group(1)) + 1 #add one because epoch count starts at 0
-            m2 = re.search('val_loss=(.*).ckpt', e_file)
-            val_loss = float(m2.group(1))
-
-            if val_loss < best_val_loss:
-                best_val_loss = val_loss
-                best_num_epochs = num_epochs
-                
-    return best_num_epochs
+    best_epoch_file = glob.glob(f'darts_logs/{model_name}/checkpoints/best-epoch*')[0]
+    m1 = re.search('best-epoch=(.*)-val', best_epoch_file)
+    num_epochs = int(m1.group(1)) + 1 #add one because epoch count starts at 0
+    
+    return num_epochs 
