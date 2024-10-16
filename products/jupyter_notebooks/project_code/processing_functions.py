@@ -504,9 +504,9 @@ def get_reformatted_hyperparams(hyp_dict, forecast_horizons):
 
     for hyp_name, values in hyp_dict.items():
 
-        if len(hyp_name.split('_')) == 3:
+        if len(hyp_name.split('_')) == 4:
 
-            model_name_main, version, fh_str = hyp_name.split('_')
+            _, model_name_main, version, fh_str = hyp_name.split('_')
             fh = int(re.search(r'(?:h)(.*)', fh_str).group(1))
 
             new_hyp_dict[model_name_main][version][fh] = {
@@ -517,7 +517,7 @@ def get_reformatted_hyperparams(hyp_dict, forecast_horizons):
 
         else:
 
-            model_name_main, fh_str = hyp_name.split('_')
+            _, model_name_main, fh_str = hyp_name.split('_')
             fh = int(re.search(r'(?:h)(.*)', fh_str).group(1))
 
             new_hyp_dict[model_name_main][fh] = {
