@@ -285,7 +285,7 @@ def get_clean_df(df, agg_cols):
 
     return df_clean
     
-def post_hyperparam_results(results, file, mode='a'):
+def post_results(results, file, mode='a'):
     """Records the best hyper parameter search results to a .json main file and a backup."""
 
     try:
@@ -369,41 +369,78 @@ def generate_cutoff_date(start_date, end_date, seed, n=1, replace=False):
 
     return cutoff_date
 
-def get_model(model_name, fh, hyp_params, model_file_path, seed, version=None):
+def get_model(model_name, fh, hyperparams, seed, version=None,
+              model_type='default', n_epochs_override=None):
 
-    """Returns an unfitted model based on the given name, forecast horizon,
-     hyperparameter dictionary, and model version (in the case of N-BEATS)."""
+    """Returns an unfitted model and a semi-unique moniker based on the given arguments, including model version in the case of N-BEATS."""
 
-    if model_name not in ['naive_seasonal', 'exponential_smoothing']:
-        hyp = hyp_params[model_name]
+    if model_name == 'nbeats': 
+        model_name_fh = f'{model_name}_{model_type}_{version}_fh{fh}' 
+    elif model_name not in ['naive_seasonal', 'exponential_smoothing']:
+        model_name_fh = f'{model_name}_{model_type}_fh{fh}'
+    else:
+        model_name_fh = f'{model_name}_fh{fh}'
+
+
+    if model_name == 'naive_seasonal':
+        model = NaiveSeasonal(K=365)
+        return model, model_name_fh
+
+    if model_name == 'exponential_smoothing':
+        model = ExponentialSmoothing(trend=ModelMode.ADDITIVE,
+                                    seasonal=SeasonalityMode.ADDITIVE,
+                                    seasonal_periods=365)
+        return model, model_name_fh
 
     if model_name in ['lstm', 'gru', 'nbeats', 'nhits']:
 
-        torch.manual_seed(seed)
-
-        model_name_fh = f'{model_name}_{fh}'
-
-        checkpoint_name = f'{model_name}_ckpt'
-
-        checkpoint_callback = ModelCheckpoint(
-            monitor='train_torchmetrics',
-            filename='best-{epoch}-{MeanAbsoluteError:.2f}',
-            dirpath= _get_checkpoint_folder(
-                work_dir = os.path.join(os.getcwd(), "darts_logs"),
-                model_name = model_name_fh,
-            )
-        )
-
         # detect whether a GPU is available
-        # print(f'Available GPU: {torch.cuda.is_available()}\n')
         if torch.cuda.is_available():
             pl_trainer_kwargs = {
-                'accelerator': 'gpu',
-                'callbacks': [checkpoint_callback],
+                'accelerator': 'gpu'
             }
         else:
-            pl_trainer_kwargs = {'callbacks': [checkpoint_callback]}
+            pl_trainer_kwargs = None
 
+        
+    hyp = hyperparams[model_name] 
+
+    if model_type == 'default':
+
+        if model_name in ['lstm', 'gru']:
+
+            model = BlockRNNModel(
+                model = model_name.upper(),
+                input_chunk_length = fh * 2 if fh < 28 else fh,
+                output_chunk_length = fh,
+                pl_trainer_kwargs = pl_trainer_kwargs,
+            )
+
+        elif model_name == 'nbeats':
+
+            model = NBEATSModel(
+                input_chunk_length = fh * 2 if fh < 28 else fh,
+                output_chunk_length = fh,
+                generic_architecture = True if version == 'generic' else False,
+                pl_trainer_kwargs = pl_trainer_kwargs
+            )
+
+        elif model_name == 'xgboost':
+            model = XGBModel(
+                lags = fh,
+                lags_past_covariates = fh,
+                output_chunk_length = fh
+            )
+
+        elif model_name == 'lgbm':
+            model = LightGBMModel(
+                lags = fh,
+                lags_past_covariates = fh,
+                output_chunk_length = fh,
+                verbose=-1
+            )
+
+    elif model_type == 'tuned':
 
         if model_name in ['lstm', 'gru']:
 
@@ -412,49 +449,28 @@ def get_model(model_name, fh, hyp_params, model_file_path, seed, version=None):
                 input_chunk_length = hyp[fh]['parameters']['input_chunk_length'],
                 output_chunk_length = fh,
                 batch_size =  hyp[fh]['parameters']['batch_size'],
-                n_epochs = hyp[fh]['parameters']['n_epochs'],
+                n_epochs = hyp[fh]['parameters']['n_epochs'] if n_epochs_override is None else n_epochs_override, 
                 hidden_dim = hyp[fh]['parameters']['hidden_dim'],
                 n_rnn_layers = hyp[fh]['parameters']['n_rnn_layers'],
                 dropout = hyp[fh]['parameters']['dropout'],
                 pl_trainer_kwargs = pl_trainer_kwargs,
                 optimizer_kwargs = {'lr': hyp[fh]['parameters']['lr'] },
-                log_tensorboard=True,
-                model_name = model_name_fh,
-                save_checkpoints=True,
-                force_reset=True
-
             )
 
         elif model_name == 'nbeats':
 
             model = NBEATSModel(
-                random_state=1,
+                random_state=seed,
                 input_chunk_length = hyp[version][fh]['parameters']['input_chunk_length'],
                 output_chunk_length = fh,
                 batch_size = hyp[version][fh]['parameters']['batch_size'],
-                n_epochs = hyp[version][fh]['parameters']['n_epochs'],
+                n_epochs = hyp[version][fh]['parameters']['n_epochs'] if n_epochs_override is None else n_epochs_override,
                 dropout = hyp[version][fh]['parameters']['dropout'],
                 activation =  hyp[version][fh]['parameters']['activation'],
                 generic_architecture=True if version == 'generic' else False,
                 pl_trainer_kwargs = pl_trainer_kwargs,
                 optimizer_kwargs = {'lr': hyp[version][fh]['parameters']['lr'] },
-                log_tensorboard=True,
-                model_name = model_name_fh,
-                save_checkpoints=True,
-                force_reset=True
             )
-
-        model.save(f'{model_file_path}{model_name}_fh{fh}.pt')
-
-    else:
-
-        if model_name == 'naive_seasonal':
-            model = NaiveSeasonal(K=365)
-
-        elif model_name == 'exponential_smoothing':
-            model = ExponentialSmoothing(trend=ModelMode.ADDITIVE,
-                                    seasonal=SeasonalityMode.ADDITIVE,
-                                    seasonal_periods=365)
 
         elif model_name == 'xgboost':
             model = XGBModel(
@@ -471,16 +487,7 @@ def get_model(model_name, fh, hyp_params, model_file_path, seed, version=None):
                 verbose=-1
             )
 
-        model.save(f'{model_file_path}{model_name}_fh{fh}.pkl')
-
-
-    if model_name == 'nbeats':
-            model_name_unique = f'{model_name}_{version}_fh{fh}'
-    else:
-        model_name_unique = f'{model_name}_fh{fh}'
-
-
-    return model, model_name_unique
+    return model, model_name_fh
 
 def get_reformatted_hyperparams(hyp_dict, forecast_horizons):
 
@@ -529,22 +536,24 @@ def get_reformatted_hyperparams(hyp_dict, forecast_horizons):
     return new_hyp_dict
 
 
-def run_experiment(model, model_names, hyper_parameters, cutoff_date, fh,
-                   df_outliers, df_clean, outliers, global_results, 
-                   model_file_path, results_path_file):
+def run_experiment(model, model_names, hyperparameters, cutoff_date, fh, 
+                   df_outliers, df_clean, outlier_flag, results,
+                   models_directory, results_directory, seed=None):
+    
     """Runs an experiment and saves the results to a file."""
 
     model_name = model_names[0]
     model_name_proper = model_names[1]
-    model_name_unique = model_names[2]
+    model_name_fh = model_names[2]
 
-    # get training and testing data (only complete past covariate min-max scaling for non-N-BEATS models)
+    print(f'\nRunning {model_name_fh} Experiments - Forecast Horizon: {fh} | Outlier Flag: {outlier_flag}...\n') 
+
+    # only complete past covariate min-max scaling for non-NBEATS models, as NBEATS does not require scaling
     if model_name == 'nbeats':
-        target_train, target_test, past_covariates = train_test_split(df_outliers, df_clean, cutoff_date, outliers=outliers, nbeats=True)
+        target_train, target_test, past_covariates = train_test_split(df_outliers, df_clean, cutoff_date, outlier_flag=outlier_flag, nbeats=True)
     else:
-        target_train, target_test, past_covariates_trf = train_test_split(df_outliers, df_clean, cutoff_date, outliers=outliers)
+        target_train, target_test, past_covariates_trf = train_test_split(df_outliers, df_clean, cutoff_date, outlier_flag=outlier_flag)
 
-    print(f'\nRunning {model_name_proper} Experiments - Forecast Horizon: {fh} | Outliers: {outliers}...\n')
 
     start_time = time.perf_counter()
 
@@ -552,56 +561,71 @@ def run_experiment(model, model_names, hyper_parameters, cutoff_date, fh,
         model.fit(series=target_train)
 
     elif model_name == 'nbeats':
+        if seed:
+            torch.manual_seed(seed)
         model.fit(series=target_train,
                 past_covariates=past_covariates,
                 verbose=False)
-        model.save(f'{model_file_path}{model_name}_fh{fh}_fitted.pt')
+        model.save(f'{models_directory}{model_name_fh}_fitted.pt') 
+
+    elif model_name in ['lstm', 'gru']:
+        if seed:
+            torch.manual_seed(seed)
+        model.fit(series=target_train,
+                past_covariates=past_covariates_trf)
+        model.save(f'{models_directory}{model_name_fh}_fitted.pt') 
 
     else:
         model.fit(series=target_train,
                 past_covariates=past_covariates_trf)
-        model.save(f'{model_file_path}{model_name}_fh{fh}_fitted.pkl')
+        model.save(f'{models_directory}{model_name_fh}_fitted.pkl')
+
+    end_time = time.perf_counter()
+    training_time = (end_time - start_time) / 60
 
     y_pred = model.predict(n=fh)
     rmse_score = rmse(y_pred, target_test[:fh])
     mae_score = mae(y_pred, target_test[:fh])
 
-    end_time = time.perf_counter()
-    training_time = (end_time - start_time) / 60
-
-
+    key =  f"optuna_{model_name_fh.replace('_default', '').replace('_tuned', '')}"
     if model_name not in ['naive_seasonal', 'exponential_smoothing']:
-        hyp_search_time = hyper_parameters[model_name_unique]['hyperparam_search_time']
-        best_val_rmse = hyper_parameters[model_name_unique]['best_rmse']
+        hyp_search_time = hyperparameters[key]['hyperparam_search_time']
+        best_val_rmse = hyperparameters[key]['best_rmse']
     else:
         hyp_search_time = np.nan
         best_val_rmse = np.nan
 
-
     total_time = round(training_time + hyp_search_time, 2)
 
+    if model_name not in ['naive_seasonal', 'exponential_smoothing']:
+        model_type = model_name_fh.split('_')[1]
+    else: 
+        model_type = 'default'
+
     # Record results
-    global_results['model_name_proper'].append(model_names[1])
-    global_results['model_name_unique'].append(model_name_unique)
-    global_results['outlier_indicator'].append(outliers)
-    global_results['forecast_horizon'].append(fh)
-    global_results['rmse'].append(rmse_score)
-    global_results['mae'].append(mae_score)
-    global_results['best_val_rmse'].append(best_val_rmse)
-    global_results['training_time'].append(training_time)
-    global_results['hyp_search_time'].append(hyp_search_time)
-    global_results['total_time'].append(total_time)
+    results['model_name_proper'].append(model_name_proper) 
+    results['model_name_fh'].append(model_name_fh)
+    results['model_type'].append(model_type)
+    results['outlier_indicator'].append(outlier_flag)
+    results['forecast_horizon'].append(fh)
+    results['rmse'].append(rmse_score)
+    results['mae'].append(mae_score)
+    results['best_val_rmse'].append(best_val_rmse)
+    results['training_time'].append(training_time)
+    results['hyp_search_time'].append(hyp_search_time)
+    results['total_time'].append(total_time)
 
-    if model_name == 'nbeats': # breaking up the N-BEATS experiements into False/True re: Outliers purely to avoid Colab execution timeout and progress/data loss 
-        file_name = f'{results_path_file}{model_name}_outliers-{outliers}_experiment_results.csv'
+    if model_name == 'nbeats': # breaking up the N-BEATS experiements into False/True re: Outliers to avoid Colab execution timeout and progress/data loss
+        file_name = f'{results_directory}{model_name}_outliers-{outlier_flag}_experiment_results.csv'
     else:
-        file_name = f'{results_path_file}{model_name}_experiment_results.csv'
-    pd.DataFrame(global_results).to_csv(file_name)
+        file_name = f'{results_directory}{model_name}_experiment_results.csv'
+
+    pd.DataFrame(results).to_csv(file_name)
 
 
-def train_test_split(df_outliers, df_clean, cutoff_date, outliers=False, nbeats=False):
+def train_test_split(df_outliers, df_clean, cutoff_date, outlier_flag=False, nbeats=False):
 
-    if outliers==False:
+    if outlier_flag==False:
 
         target = create_timeseries(df_clean, 'sunshine_hr')
 
@@ -618,7 +642,7 @@ def train_test_split(df_outliers, df_clean, cutoff_date, outliers=False, nbeats=
         covariate_scaler.fit(covariates_train)
         past_covariates_trf = covariate_scaler.transform(past_covariates)
 
-    elif outliers == True:
+    elif outlier_flag == True:
 
         target = create_timeseries(df_outliers, 'sunshine_hr')
 
