@@ -108,56 +108,7 @@ def generate_df_summary(df, describe_only=False):
         print('------ Missing Data Percentage: ------')
         display(df.isnull().sum()/len(df) * 100)   
 
-
 def daily_aggregations(dataframe):
-    """Aggregates the weather data at a daily level of granularity."""
-
-    df_copy = dataframe.copy()
-    df_copy['date'] = df_copy['time'].dt.normalize()
-    df_copy = df_copy.set_index('date')
-
-    daily_data = df_copy.loc[:, ['sunshine_s', 'precipitation', 'shortwave_radiation']].resample('D').sum()
-
-    # convert to hourly values 
-    daily_data['sunshine_hr'] = daily_data['sunshine_s'] / 3600
-
-    # columns for min, mean, and max aggregations
-    agg_cols = ['temp', 'humidity', 'dew_point', 'cloud_cover', 'wind_speed']
-
-    # Compute min, mean, and max values
-
-    # minimum aggregations
-    mins = df_copy[agg_cols].resample('D').min()
-    col_names_min = [f'min_{name}' for name in agg_cols]
-    mins.columns = col_names_min
-
-    # mean aggregations
-    means = df_copy[agg_cols].resample('D').mean()
-    col_names_mean = [f'mean_{name}' for name in agg_cols]
-    means.columns = col_names_mean
-
-    # max aggregations
-    maxes = df_copy[agg_cols].resample('D').max()
-    col_names_max = [f'max_{name}' for name in agg_cols]
-    maxes.columns = col_names_max
-
-    # merge the aggregated dataframes
-    for df in [mins, means, maxes]:
-        daily_data = pd.merge(daily_data, df, left_index=True, right_index=True)
-
-    daily_data = daily_data.drop(columns='sunshine_s').round(3)
-
-    # reorder the columns to display sunshine_hr first
-    daily_data = daily_data.loc[:, ['sunshine_hr', 'shortwave_radiation', 'precipitation', 
-                                    'min_temp','mean_temp', 'max_temp',
-                                    'min_humidity', 'mean_humidity', 'max_humidity',
-                                    'min_dew_point','mean_dew_point', 'max_dew_point',
-                                    'min_cloud_cover',  'mean_cloud_cover', 'max_cloud_cover',
-                                    'min_wind_speed', 'mean_wind_speed', 'max_wind_speed']]
-
-    return daily_data
-
-def daily_aggregations_v2(dataframe):
     """Aggregates the weather data at a daily level of granularity."""
     
     df_copy = dataframe.copy()
@@ -270,7 +221,7 @@ def get_clean_df(df, agg_cols):
     df['time'] = pd.to_datetime(df['time'])
     
     # create daily aggregations 
-    df = daily_aggregations_v2(df, agg_cols)
+    df = daily_aggregations(df, agg_cols)
     df.drop(['humidity_min', 'humidity_max'], axis=1, inplace=True)
     df['temp_range'] = df['temp_max'] - df['temp_min']
     df['month'] = df.index.month
