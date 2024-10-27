@@ -566,7 +566,10 @@ def run_experiment(model, model_names, hyperparameters, cutoff_date, fh,
     results['total_time'].append(total_time)
 
     if model_name == 'nbeats': # breaking up the N-BEATS experiements into False/True re: Outliers to avoid Colab execution timeout and progress/data loss
-        file_name = f'{results_directory}{model_name}_outliers-{outlier_flag}_experiment_results.csv'
+        if model_type == 'default':
+            file_name = f'{results_directory}{model_name}_{model_type}_outliers-{outlier_flag}_experiment_results.csv'
+        else:
+            file_name = f'{results_directory}{model_name}_{model_type}_experiment_results.csv'
     else:
         file_name = f'{results_directory}{model_name}_experiment_results.csv'
 
@@ -608,7 +611,6 @@ def train_test_split(df_outliers, df_clean, cutoff_date, outlier_flag=False, nbe
         covariate_scaler = Scaler()
         covariate_scaler.fit(covariates_train)
         past_covariates_trf = covariate_scaler.transform(past_covariates)
-
 
     if nbeats:
         return target_train, target_test, past_covariates
