@@ -557,7 +557,7 @@ def run_experiment(model, model_names, hyperparameters, cutoff_date, fh,
     mae_score = mae(y_pred, target_test[:fh])
 
     key =  f"optuna_{model_name_fh.replace('_default', '').replace('_tuned', '')}"
-    if model_name != 'exponential_smoothing':
+    if 'tuned' in model_name_fh:
         hyp_search_time = hyperparameters[key]['hyperparam_search_time']
         best_val_rmse = hyperparameters[key]['best_rmse']
     else:
