@@ -15,7 +15,6 @@ import warnings
 from darts.dataprocessing.transformers import Scaler
 from darts.models import (BlockRNNModel, ExponentialSmoothing, LightGBMModel, NBEATSModel,
                           XGBModel)
-from darts.models.forecasting.baselines import NaiveSeasonal
 from darts.models.forecasting.torch_forecasting_model import _get_checkpoint_folder
 from darts.utils.callbacks import TFMProgressBar
 from darts.utils.timeseries_generation import datetime_attribute_timeseries as dt_attr
@@ -327,15 +326,11 @@ def get_model(model_name, fh, hyperparams, seed, version=None,
 
     if model_name == 'nbeats': 
         model_name_fh = f'{model_name}_{model_type}_{version}_fh{fh}' 
-    elif model_name not in ['naive_seasonal', 'exponential_smoothing']:
+    elif model_name != 'exponential_smoothing':
         model_name_fh = f'{model_name}_{model_type}_fh{fh}'
     else:
         model_name_fh = f'{model_name}_fh{fh}'
 
-
-    if model_name == 'naive_seasonal':
-        model = NaiveSeasonal(K=365)
-        return model, model_name_fh
 
     if model_name == 'exponential_smoothing':
         model = ExponentialSmoothing(trend=ModelMode.ADDITIVE,
@@ -512,7 +507,7 @@ def run_experiment(model, model_names, hyperparameters, cutoff_date, fh,
 
     start_time = time.perf_counter()
 
-    if model_name in ['naive_seasonal', 'exponential_smoothing']:
+    if model_name == 'exponential_smoothing':
         model.fit(series=target_train)
 
     elif model_name == 'nbeats':
@@ -543,7 +538,7 @@ def run_experiment(model, model_names, hyperparameters, cutoff_date, fh,
     mae_score = mae(y_pred, target_test[:fh])
 
     key =  f"optuna_{model_name_fh.replace('_default', '').replace('_tuned', '')}"
-    if model_name not in ['naive_seasonal', 'exponential_smoothing']:
+    if model_name != 'exponential_smoothing':
         hyp_search_time = hyperparameters[key]['hyperparam_search_time']
         best_val_rmse = hyperparameters[key]['best_rmse']
     else:
@@ -552,7 +547,7 @@ def run_experiment(model, model_names, hyperparameters, cutoff_date, fh,
 
     total_time = round(training_time + hyp_search_time, 2)
 
-    if model_name not in ['naive_seasonal', 'exponential_smoothing']:
+    if model_name != 'exponential_smoothing':
         model_type = model_name_fh.split('_')[1]
     else: 
         model_type = 'default'
