@@ -59,8 +59,8 @@ def plot_seasonal_decomposition(df, column, period, color, name=''):
     plt.show()
 
 def plot_monthly_charts(monthly_data: dict, column='COLUMN', 
-                        figsize=(20,20), x_label='', y_label='Hours' ,
-                        name=None):
+                        figsize=(20,20), x_label='', y_label='Hours',
+                        ylim_start=0, name=None):
     
     """Plots the Annual Trend, Monthly means, and Three Year Rolling Average."""
     
@@ -105,10 +105,10 @@ def plot_monthly_charts(monthly_data: dict, column='COLUMN',
     sns.lineplot(ax=axes[0, 0], data=monthly_data[JANUARY], x=YEAR, y=COLUMN, label='Monthly Mean')
     sns.lineplot(ax=axes[0, 0], data=monthly_data[JANUARY], x=YEAR, y=THREE_YEAR_ROLLING_AVG,
                 color='black', linestyle='--', label='3-Year Rolling Average')
-    axes[0, 0].text(0.12, 0.90, JANUARY, horizontalalignment='center', verticalalignment='center', 
+    axes[0, 0].text(0.85, 0.07, JANUARY, horizontalalignment='center', verticalalignment='center', 
                     transform=axes[0, 0].transAxes, fontsize=17)
     axes[0, 0].set_ylabel(y_label, fontsize=18)
-    axes[0, 0].set(ylim=(0, y_max))
+    axes[0, 0].set(ylim=(ylim_start, y_max))
     axes[0, 0].set_xlabel('')
 
     # February
@@ -119,10 +119,10 @@ def plot_monthly_charts(monthly_data: dict, column='COLUMN',
     sns.lineplot(ax=axes[0, 1], data=monthly_data[FEBRUARY], x=YEAR, y=COLUMN)
     sns.lineplot(ax=axes[0, 1], data=monthly_data[FEBRUARY], x=YEAR, y=THREE_YEAR_ROLLING_AVG,
                 color='black', linestyle='--')
-    axes[0, 1].text(0.12, 0.90, FEBRUARY, horizontalalignment='center', verticalalignment='center', 
+    axes[0, 1].text(0.85, 0.07, FEBRUARY, horizontalalignment='center', verticalalignment='center', 
                     transform=axes[0, 1].transAxes, fontsize=17)
     axes[0, 1].set_ylabel('')
-    axes[0, 1].set(ylim=(0, y_max))
+    axes[0, 1].set(ylim=(ylim_start, y_max))
     axes[0, 1].set_xlabel('')
 
 
@@ -134,10 +134,10 @@ def plot_monthly_charts(monthly_data: dict, column='COLUMN',
     sns.lineplot(ax=axes[0, 2], data=monthly_data[MARCH], x=YEAR, y=COLUMN)
     sns.lineplot(ax=axes[0, 2], data=monthly_data[MARCH], x=YEAR, y=THREE_YEAR_ROLLING_AVG,
                 color='black', linestyle='--')
-    axes[0, 2].text(0.12, 0.90, MARCH, horizontalalignment='center', verticalalignment='center', 
+    axes[0, 2].text(0.85, 0.07, MARCH, horizontalalignment='center', verticalalignment='center', 
                     transform=axes[0, 2].transAxes, fontsize=17)
     axes[0, 2].set_ylabel('')
-    axes[0, 2].set(ylim=(0, y_max))
+    axes[0, 2].set(ylim=(ylim_start, y_max))
     axes[0, 2].set_xlabel('')
 
 
@@ -149,10 +149,10 @@ def plot_monthly_charts(monthly_data: dict, column='COLUMN',
     sns.lineplot(ax=axes[1, 0], data=monthly_data[APRIL], x=YEAR, y=COLUMN)
     sns.lineplot(ax=axes[1, 0], data=monthly_data[APRIL], x=YEAR, y=THREE_YEAR_ROLLING_AVG,
                 color='black', linestyle='--')
-    axes[1, 0].text(0.12, 0.90, APRIL, horizontalalignment='center', verticalalignment='center', 
+    axes[1, 0].text(0.85, 0.07, APRIL, horizontalalignment='center', verticalalignment='center', 
                     transform=axes[1, 0].transAxes, fontsize=17)
     axes[1, 0].set_ylabel(y_label, fontsize=18)
-    axes[1, 0].set(ylim=(0, y_max))
+    axes[1, 0].set(ylim=(ylim_start, y_max))
     axes[1, 0].set_xlabel('')
 
     # May
@@ -163,10 +163,10 @@ def plot_monthly_charts(monthly_data: dict, column='COLUMN',
     sns.lineplot(ax=axes[1, 1], data=monthly_data[MAY], x=YEAR, y=COLUMN)
     sns.lineplot(ax=axes[1, 1], data=monthly_data[MAY], x=YEAR, y=THREE_YEAR_ROLLING_AVG,
                 color='black', linestyle='--')
-    axes[1, 1].text(0.12, 0.90, MAY, horizontalalignment='center', verticalalignment='center', 
+    axes[1, 1].text(0.85, 0.07, MAY, horizontalalignment='center', verticalalignment='center', 
                     transform=axes[1, 1].transAxes, fontsize=17)
     axes[1, 1].set_ylabel('')
-    axes[1, 1].set(ylim=(0, y_max))
+    axes[1, 1].set(ylim=(ylim_start, y_max))
     axes[1, 1].set_xlabel('')
 
 
@@ -179,10 +179,10 @@ def plot_monthly_charts(monthly_data: dict, column='COLUMN',
     sns.lineplot(ax=axes[1, 2], data=monthly_data[JUNE], x=YEAR, y=COLUMN, label='Monthly Mean')
     sns.lineplot(ax=axes[1, 2], data=monthly_data[JUNE], x=YEAR, y=THREE_YEAR_ROLLING_AVG,
                 color='black', linestyle='--', label='3-Year Rolling Average')
-    axes[1, 2].text(0.12, 0.95, JUNE, horizontalalignment='center', verticalalignment='center', 
+    axes[1, 2].text(0.85, 0.07, JUNE, horizontalalignment='center', verticalalignment='center', 
                     transform=axes[1, 2].transAxes, fontsize=17)
     axes[1, 2].set_ylabel('')
-    axes[1, 2].set(ylim=(0, y_max))
+    axes[1, 2].set(ylim=(ylim_start, y_max))
     axes[1, 2].set_xlabel('')
 
     # July
@@ -194,10 +194,10 @@ def plot_monthly_charts(monthly_data: dict, column='COLUMN',
     sns.lineplot(ax=axes[2, 0], data=monthly_data[JULY], x=YEAR, y=THREE_YEAR_ROLLING_AVG,
                 color='black', linestyle='--')
 
-    axes[2, 0].text(0.12, 0.95, JULY, horizontalalignment='center', verticalalignment='center', 
+    axes[2, 0].text(0.85, 0.07, JULY, horizontalalignment='center', verticalalignment='center', 
                     transform=axes[2, 0].transAxes, fontsize=17)
     axes[2, 0].set_ylabel(y_label, fontsize=18)
-    axes[2, 0].set(ylim=(0, y_max))
+    axes[2, 0].set(ylim=(ylim_start, y_max))
     axes[2, 0].set_xlabel('')
 
     # August
@@ -209,10 +209,10 @@ def plot_monthly_charts(monthly_data: dict, column='COLUMN',
     sns.lineplot(ax=axes[2, 1], data=monthly_data[AUGUST], x=YEAR, y=THREE_YEAR_ROLLING_AVG,
                 color='black', linestyle='--')
 
-    axes[2, 1].text(0.12, 0.90, AUGUST, horizontalalignment='center', verticalalignment='center', 
+    axes[2, 1].text(0.85, 0.07, AUGUST, horizontalalignment='center', verticalalignment='center', 
                     transform=axes[2, 1].transAxes, fontsize=17)
     axes[2, 1].set_ylabel('')
-    axes[2, 1].set(ylim=(0, y_max))
+    axes[2, 1].set(ylim=(ylim_start, y_max))
     axes[2, 1].set_xlabel('')
 
     # September
@@ -223,10 +223,10 @@ def plot_monthly_charts(monthly_data: dict, column='COLUMN',
     sns.lineplot(ax=axes[2, 2], data=monthly_data[SEPTEMBER], x=YEAR, y=COLUMN)
     sns.lineplot(ax=axes[2, 2], data=monthly_data[SEPTEMBER], x=YEAR, y=THREE_YEAR_ROLLING_AVG,
                 color='black', linestyle='--')
-    axes[2, 2].text(0.15, 0.90, SEPTEMBER, horizontalalignment='center', verticalalignment='center', 
+    axes[2, 2].text(0.85, 0.07, SEPTEMBER, horizontalalignment='center', verticalalignment='center', 
                     transform=axes[2, 2].transAxes, fontsize=17)
     axes[2, 2].set_ylabel('')
-    axes[2, 2].set(ylim=(0, y_max))
+    axes[2, 2].set(ylim=(ylim_start, y_max))
     axes[2, 2].set_xlabel('')
 
     # October
@@ -238,10 +238,10 @@ def plot_monthly_charts(monthly_data: dict, column='COLUMN',
     sns.lineplot(ax=axes[3, 0], data=monthly_data[OCTOBER], x=YEAR, y=COLUMN, label='Monthly Mean')
     sns.lineplot(ax=axes[3, 0], data=monthly_data[OCTOBER], x=YEAR, y=THREE_YEAR_ROLLING_AVG,
                 color='black', linestyle='--', label='3-Year Rolling Average')
-    axes[3, 0].text(0.12, 0.90, OCTOBER, horizontalalignment='center', verticalalignment='center', 
+    axes[3, 0].text(0.85, 0.07, OCTOBER, horizontalalignment='center', verticalalignment='center', 
                     transform=axes[3, 0].transAxes, fontsize=17)
     axes[3, 0].set_ylabel(y_label, fontsize=18)
-    axes[3, 0].set(ylim=(0, y_max))
+    axes[3, 0].set(ylim=(ylim_start, y_max))
     axes[3, 0].set_xlabel('')
 
     # November
@@ -252,10 +252,10 @@ def plot_monthly_charts(monthly_data: dict, column='COLUMN',
     sns.lineplot(ax=axes[3, 1], data=monthly_data[NOVEMBER], x=YEAR, y=COLUMN)
     sns.lineplot(ax=axes[3, 1], data=monthly_data[NOVEMBER], x=YEAR, y=THREE_YEAR_ROLLING_AVG,
                 color='black', linestyle='--')
-    axes[3, 1].text(0.12, 0.90, NOVEMBER, horizontalalignment='center', verticalalignment='center', 
+    axes[3, 1].text(0.85, 0.07, NOVEMBER, horizontalalignment='center', verticalalignment='center', 
                     transform=axes[3, 1].transAxes, fontsize=17)
     axes[3, 1].set_ylabel('')
-    axes[3, 1].set(ylim=(0, y_max))
+    axes[3, 1].set(ylim=(ylim_start, y_max))
     axes[3, 1].set_xlabel('')
 
     # December
@@ -266,47 +266,16 @@ def plot_monthly_charts(monthly_data: dict, column='COLUMN',
     sns.lineplot(ax=axes[3, 2], data=monthly_data[DECEMBER], x=YEAR, y=COLUMN)
     sns.lineplot(ax=axes[3, 2], data=monthly_data[DECEMBER], x=YEAR, y=THREE_YEAR_ROLLING_AVG,
                 color='black', linestyle='--')
-    axes[3, 2].text(0.12, 0.90, DECEMBER, horizontalalignment='center', verticalalignment='center', 
+    axes[3, 2].text(0.85, 0.07, DECEMBER, horizontalalignment='center', verticalalignment='center', 
                     transform=axes[3, 2].transAxes, fontsize=17)
     axes[3, 2].set_ylabel('')
-    axes[3, 2].set(ylim=(0, y_max))
+    axes[3, 2].set(ylim=(ylim_start, y_max))
     axes[3, 2].set_xlabel('')
 
     fig.tight_layout()
 
     if name:
         plt.savefig(f'{name}.png')
-
-def generate_boxplots(data, columns, y_labels, alternate_x_labels=None, 
-                      granularity='month', figsize=(20,6), 
-                      tick_font_size=18, label_font_size=22,
-                      name=None):
-    
-    """Generates monthly or seasonal boxplots for the given columns."""
-    
-    for col in columns:
-        fig, ax = plt.subplots(figsize=figsize)
-        
-        if granularity == 'month':
-            boxplot = sns.boxplot(data=data, x='month', y=col, ax=ax, color='lightblue')
-        elif granularity == 'season':
-            boxplot = sns.boxplot(data=data, x='season_str', y=col, ax=ax, color='lightblue')
-            
-        ax.set_ylabel(y_labels[col], fontsize=label_font_size)
-        ax.set_xlabel('')
-        plt.yticks(fontsize=tick_font_size)
-        
-        if alternate_x_labels:
-            ax.set_xticklabels(alternate_x_labels, fontsize=tick_font_size)
-        else:
-            plt.xticks(fontsize=tick_font_size)
-            
-        plt.tight_layout()
-
-        if name:
-            plt.savefig(f'{name}.png')
-
-        plt.show()
 
 def dual_bar_chart(df, x,
                    y1, y2,
