@@ -355,21 +355,40 @@ def get_model(model_name, fh, hyperparams, seed, version=None,
 
         if model_name in ['lstm', 'gru']:
 
-            model = BlockRNNModel(
-                model = model_name.upper(),
-                input_chunk_length = fh * 2,
-                output_chunk_length = fh,
-                pl_trainer_kwargs = pl_trainer_kwargs,
-            )
+            if n_epochs_override:
+                model = BlockRNNModel(
+                    model = model_name.upper(),
+                    input_chunk_length = fh * 2,
+                    output_chunk_length = fh,
+                    n_epochs = n_epochs_override,
+                    pl_trainer_kwargs = pl_trainer_kwargs,
+                )
+
+            else:
+                model = BlockRNNModel(
+                    model = model_name.upper(),
+                    input_chunk_length = fh * 2,
+                    output_chunk_length = fh,
+                    pl_trainer_kwargs = pl_trainer_kwargs,
+                )
 
         elif model_name == 'nbeats':
 
-            model = NBEATSModel(
-                input_chunk_length = fh * 2,
-                output_chunk_length = fh,
-                generic_architecture = True if version == 'generic' else False,
-                pl_trainer_kwargs = pl_trainer_kwargs
-            )
+            if n_epochs_override:
+                model = NBEATSModel(
+                    input_chunk_length = fh * 2,
+                    output_chunk_length = fh,
+                    generic_architecture = True if version == 'generic' else False,
+                    n_epochs = n_epochs_override,
+                    pl_trainer_kwargs = pl_trainer_kwargs
+                )
+            else:
+                model = NBEATSModel(
+                    input_chunk_length = fh * 2,
+                    output_chunk_length = fh,
+                    generic_architecture = True if version == 'generic' else False,
+                    pl_trainer_kwargs = pl_trainer_kwargs
+                )
 
         elif model_name == 'xgboost':
             model = XGBModel(
