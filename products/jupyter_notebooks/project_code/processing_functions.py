@@ -562,11 +562,11 @@ def run_experiment(model, model_names, hyperparameters, cutoff_date, fh,
     if 'tuned' in model_name_fh:
         hyp_search_time = hyperparameters[key]['hyperparam_search_time']
         best_val_rmse = hyperparameters[key]['best_rmse']
+        total_time = round(training_time + hyp_search_time, 2)
     else:
         hyp_search_time = np.nan
         best_val_rmse = np.nan
-
-    total_time = round(training_time + hyp_search_time, 2)
+        total_time = round(training_time, 2)
 
     if model_name != 'exponential_smoothing':
         model_type = model_name_fh.split('_')[1]
