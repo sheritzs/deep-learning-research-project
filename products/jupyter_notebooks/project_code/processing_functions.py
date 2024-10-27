@@ -362,7 +362,7 @@ def get_model(model_name, fh, hyperparams, seed, version=None,
 
             model = BlockRNNModel(
                 model = model_name.upper(),
-                input_chunk_length = fh * 2 if fh < 28 else fh,
+                input_chunk_length = fh * 2,
                 output_chunk_length = fh,
                 pl_trainer_kwargs = pl_trainer_kwargs,
             )
@@ -370,7 +370,7 @@ def get_model(model_name, fh, hyperparams, seed, version=None,
         elif model_name == 'nbeats':
 
             model = NBEATSModel(
-                input_chunk_length = fh * 2 if fh < 28 else fh,
+                input_chunk_length = fh * 2,
                 output_chunk_length = fh,
                 generic_architecture = True if version == 'generic' else False,
                 pl_trainer_kwargs = pl_trainer_kwargs
@@ -378,15 +378,15 @@ def get_model(model_name, fh, hyperparams, seed, version=None,
 
         elif model_name == 'xgboost':
             model = XGBModel(
-                lags = fh,
-                lags_past_covariates = fh,
+                lags = fh*2 if fh < 14 else fh,
+                lags_past_covariates = fh*2 if fh < 14 else fh,
                 output_chunk_length = fh
             )
 
         elif model_name == 'lgbm':
             model = LightGBMModel(
-                lags = fh,
-                lags_past_covariates = fh,
+                lags = fh*2 if fh < 14 else fh,
+                lags_past_covariates = fh*2 if fh < 14 else fh,
                 output_chunk_length = fh,
                 verbose=-1
             )
@@ -403,9 +403,9 @@ def get_model(model_name, fh, hyperparams, seed, version=None,
                 n_epochs = hyp[fh]['parameters']['n_epochs'] if n_epochs_override is None else n_epochs_override, 
                 hidden_dim = hyp[fh]['parameters']['hidden_dim'],
                 n_rnn_layers = hyp[fh]['parameters']['n_rnn_layers'],
-                dropout = hyp[fh]['parameters']['dropout'],
+                dropout = round(hyp[fh]['parameters']['dropout'],7),
                 pl_trainer_kwargs = pl_trainer_kwargs,
-                optimizer_kwargs = {'lr': hyp[fh]['parameters']['lr'] },
+                optimizer_kwargs = {'lr': round(hyp[fh]['parameters']['lr'],7) },
             )
 
         elif model_name == 'nbeats':
@@ -414,13 +414,17 @@ def get_model(model_name, fh, hyperparams, seed, version=None,
                 random_state=seed,
                 input_chunk_length = hyp[version][fh]['parameters']['input_chunk_length'],
                 output_chunk_length = fh,
+                num_stacks = hyp[version][fh]['parameters']['num_stacks'],
+                num_blocks = hyp[version][fh]['parameters']['num_blocks'],
+                num_layers = hyp[version][fh]['parameters']['num_layers'],
+                layer_widths = hyp[version][fh]['parameters']['layer_widths'],
                 batch_size = hyp[version][fh]['parameters']['batch_size'],
                 n_epochs = hyp[version][fh]['parameters']['n_epochs'] if n_epochs_override is None else n_epochs_override,
-                dropout = hyp[version][fh]['parameters']['dropout'],
+                dropout = round(hyp[version][fh]['parameters']['dropout'],7),
                 activation =  hyp[version][fh]['parameters']['activation'],
                 generic_architecture=True if version == 'generic' else False,
                 pl_trainer_kwargs = pl_trainer_kwargs,
-                optimizer_kwargs = {'lr': hyp[version][fh]['parameters']['lr'] },
+                optimizer_kwargs = {'lr': round(hyp[version][fh]['parameters']['lr'],7) },
             )
 
         elif model_name == 'xgboost':
