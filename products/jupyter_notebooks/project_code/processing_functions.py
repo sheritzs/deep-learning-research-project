@@ -509,6 +509,8 @@ def run_experiment(model, model_names, hyperparameters, cutoff_date, fh,
                    df_outliers, df_clean, outlier_flag, results,
                    models_directory, results_directory, seed=None):
     
+    current_results = results.copy()
+    
     """Runs an experiment and saves the results to a file."""
 
     model_name = model_names[0]
@@ -572,17 +574,19 @@ def run_experiment(model, model_names, hyperparameters, cutoff_date, fh,
         model_type = 'default'
 
     # Record results
-    results['model_name_proper'].append(model_name_proper) 
-    results['model_name_fh'].append(model_name_fh)
-    results['model_type'].append(model_type)
-    results['outlier_indicator'].append(outlier_flag)
-    results['forecast_horizon'].append(fh)
-    results['rmse'].append(rmse_score)
-    results['mae'].append(mae_score)
-    results['best_val_rmse'].append(best_val_rmse)
-    results['training_time'].append(training_time)
-    results['hyp_search_time'].append(hyp_search_time)
-    results['total_time'].append(total_time)
+    current_results['model_name_proper'].append(model_name_proper) 
+    current_results['model_name_fh'].append(model_name_fh)
+    current_results['model_type'].append(model_type)
+    current_results['outlier_indicator'].append(outlier_flag)
+    current_results['forecast_horizon'].append(fh)
+    current_results['rmse'].append(rmse_score)
+    current_results['mae'].append(mae_score)
+    current_results['best_val_rmse'].append(best_val_rmse)
+    current_results['training_time'].append(training_time)
+    current_results['hyp_search_time'].append(hyp_search_time)
+    current_results['total_time'].append(total_time)
+
+    results.update(current_results) 
 
     if model_name == 'nbeats': # breaking up the N-BEATS experiements into False/True re: Outliers to avoid Colab execution timeout and progress/data loss
         if model_type == 'default':
