@@ -552,21 +552,21 @@ def run_experiment(model, model_names, hyperparameters, cutoff_date, fh,
         model.save(f'{models_directory}{model_name_fh}_fitted.pkl')
 
     end_time = time.perf_counter()
-    training_time = (end_time - start_time) / 60
+    training_time = round((end_time - start_time) / 60, 3)
 
     y_pred = model.predict(n=fh)
-    rmse_score = rmse(y_pred, target_test[:fh])
-    mae_score = mae(y_pred, target_test[:fh])
+    rmse_score = round(rmse(y_pred, target_test[:fh]), 4)
+    mae_score = round(mae(y_pred, target_test[:fh]), 4)
 
     key =  f"optuna_{model_name_fh.replace('_default', '').replace('_tuned', '')}"
     if 'tuned' in model_name_fh:
         hyp_search_time = hyperparameters[key]['hyperparam_search_time']
         best_val_rmse = hyperparameters[key]['best_rmse']
-        total_time = round(training_time + hyp_search_time, 2)
+        total_time = round(training_time + hyp_search_time, 3)
     else:
         hyp_search_time = np.nan
         best_val_rmse = np.nan
-        total_time = round(training_time, 2)
+        total_time = round(training_time, 3)
 
     if model_name != 'exponential_smoothing':
         model_type = model_name_fh.split('_')[1]
