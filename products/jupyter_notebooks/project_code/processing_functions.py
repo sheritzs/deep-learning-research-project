@@ -271,40 +271,6 @@ def print_callback(study, trial):
   print(f"Current value: {trial.value}, Current params: {trial.params}")
   print(f"Current Best value: {study.best_value}, Best params: {study.best_trial.params}")
 
-def hyperparameter_search(objective, n_trials, model_name):
-    """
-    Completes an Optuna hyperparameter search and returns the results 
-    after n_trials. 
-     """
-    start_time = time.perf_counter()
-    study = optuna.create_study(direction='minimize')
-
-    # limit number of trials
-    study.optimize(objective, n_trials=n_trials, callbacks=[print_callback])
-
-    end_time = time.perf_counter()
-    operation_runtime = (end_time - start_time)/60
-
-    #print the best value and best hyperparameters:
-    print(f'Best value: {study.best_value:.4f}\nBest parameters: {study.best_trial.params}')
-
-    print(f'Operation runtime: {operation_runtime:.2f} minutes')
-
-    results = {model_name: {
-        'batch_size': study.best_trial.params['batch_size'],
-        'n_epochs': study.best_trial.params['n_epochs'],
-        'num_blocks': study.best_trial.params['num_blocks'],
-        'num_layers': study.best_trial.params['num_layers'],
-        'dropout': study.best_trial.params['dropout'],
-        'activation': study.best_trial.params['activation'],
-        'lr': study.best_trial.params['lr'],
-        'rmse': study.best_value,
-        'hyp_search_runtime': operation_runtime
-        }
-    }
-
-    return results
-
 def generate_cutoff_date(start_date, end_date, seed, n=1, replace=False):
     """Generates a random date from a given range (start_date to end_date) for the training cutoff."""
     dates = pd.date_range(start_date, end_date).to_series()
