@@ -28,7 +28,7 @@ import torch
 from tqdm.notebook import tqdm
 
 # metrics
-from darts.metrics import mae, rmse
+from darts.metrics import mae, rmse, r2_score
 
 
 def download_data(api_call: str, file_path: str, file_name: str):
@@ -197,9 +197,8 @@ def create_timeseries(df, col):
   return TimeSeries.from_dataframe(df[['date', col]], 'date', col).astype(np.float32) 
 
 def get_covariate_ts(df):
-    df = df.copy().reset_index()
-    
     """Returns timeseries objects for the combined covariates. """
+    df = df.copy().reset_index()
     
     time_series = {
         'covariates': {}
@@ -208,7 +207,7 @@ def get_covariate_ts(df):
     for col in df.columns[2:]:
         time_series['covariates'][col] = create_timeseries(df, col)
 
-    # create stacked timeseries for the covariates
+    # create stacked timeseries for the covariates (exogenous variables)
     covariates_ts = concatenate([ts for ts in time_series['covariates'].values()],
                               axis=1)
 
@@ -523,15 +522,18 @@ def run_experiment(model, model_names, hyperparameters, cutoff_date, fh,
     y_pred = model.predict(n=fh)
     rmse_score = round(rmse(y_pred, target_test[:fh]), 4)
     mae_score = round(mae(y_pred, target_test[:fh]), 4)
+    r2_score_ = round(r2_score(y_pred, target_test[:fh]), 4)
 
     key =  f"optuna_{model_name_fh.replace('_default', '').replace('_tuned', '')}"
     if 'tuned' in model_name_fh:
         hyp_search_time = hyperparameters[key]['hyperparam_search_time']
         best_val_rmse = hyperparameters[key]['best_rmse']
+        n_epochs = hyperparameters[key]['n_epochs']
         total_time = round(training_time + hyp_search_time, 3)
     else:
         hyp_search_time = np.nan
         best_val_rmse = np.nan
+        n_epochs = np.nan
         total_time = round(training_time, 3)
 
     if model_name != 'exponential_smoothing':
@@ -547,6 +549,8 @@ def run_experiment(model, model_names, hyperparameters, cutoff_date, fh,
     current_results['forecast_horizon'].append(fh)
     current_results['rmse'].append(rmse_score)
     current_results['mae'].append(mae_score)
+    current_results['r2_score_'].append(r2_score_)
+    current_results['n_epochs'].append(n_epochs)
     current_results['best_val_rmse'].append(best_val_rmse)
     current_results['training_time'].append(training_time)
     current_results['hyp_search_time'].append(hyp_search_time)
