@@ -277,7 +277,7 @@ def get_model(model_name, fh, hyperparams, seed, version=None,
 
     if model_name == 'nbeats': 
         model_name_fh = f'{model_name}_{model_type}_{version}_fh{fh}' 
-    elif model_name not in ['naive_average', 'ets']:
+    elif model_name not in ['naive_drift', 'ets']:
         model_name_fh = f'{model_name}_{model_type}_fh{fh}'
     else:
         model_name_fh = f'{model_name}_fh{fh}'
