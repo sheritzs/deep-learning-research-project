@@ -317,3 +317,13 @@ def dual_bar_chart(df, x,
     fig.update_yaxes(title_text=y1_label, secondary_y=False)
 
     fig.show()
+
+def get_name_for_chart(row):
+    if row['model_type'] == 'tuned':
+        return 'NBEATS-T'
+    elif 'generic' in row['model_name_fh']:
+        return 'NBEATS-G'
+    elif 'interpretable' in row['model_name_fh']:
+        return 'NBEATS-I'
+    else:
+        return row['model_name_proper']
