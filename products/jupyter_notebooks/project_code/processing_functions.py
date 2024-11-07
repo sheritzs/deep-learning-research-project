@@ -523,25 +523,26 @@ def run_experiment(model, model_names, n_epochs_override, hyperparameters, cutof
     mae_score = round(mae(predictions, target_test[:fh]), 4)
 
     key =  f"optuna_{model_name_fh.replace('_default', '').replace('_tuned', '')}"
+
     if 'tuned' in model_name_fh:
         hyp_search_time = round(hyperparameters[key]['hyperparam_search_time'], 3)
         best_val_rmse = round(hyperparameters[key]['best_rmse'], 4)
-        total_time = training_time + hyp_search_time
-
-        if model_name not in ['xgboost', 'lgbm']:
-            n_epochs = hyperparameters[key]['best_parameters']['n_epochs']
-        else:
-            n_epochs = np.nan
+        total_time = training_time + hyp_search_time     
     else:
         hyp_search_time = np.nan
         best_val_rmse = np.nan
-        n_epochs = np.nan
         total_time = round(training_time, 3)
 
     if model_name in ['naive_drift', 'ets']:
         model_type = 'default'
     else:
         model_type = model_name_fh.split('_')[1]
+
+    if n_epochs_override:
+        if model_name not in ['nbeats', 'lstm', 'gru']:
+            n_epochs = np.nan
+        else:
+            n_epochs = n_epochs_override
 
     has_n_epochs_override = True if n_epochs_override else False
 
@@ -561,14 +562,14 @@ def run_experiment(model, model_names, n_epochs_override, hyperparameters, cutof
     current_results['total_time'].append(total_time)
 
     results.update(current_results) 
-
-    if model_name == 'nbeats': # breaking up the N-BEATS experiements into False/True re: Outliers to avoid Colab execution timeout and progress/data loss
+#TODO: COMMIT W/ MSG 'remove n_epoch_override file separator for lstm and gru
+    if model_name == 'nbeats': # breaking up the N-BEATS experiments to avoid Colab execution timeout and progress/data loss
         if model_type == 'default':
             file_name = f'{results_directory}{model_name}_{model_type}_outliers-{has_outliers}_epoch-override-{has_n_epochs_override}_results.csv'
         else:
             file_name = f'{results_directory}{model_name}_{model_type}_epoch-override-{has_n_epochs_override}_results.csv'
     elif model_name in ['lstm', 'gru']:
-        file_name = f'{results_directory}{model_name}_epoch-override-{has_n_epochs_override}_results.csv'
+        file_name = f'{results_directory}{model_name}_results.csv'
     else:
         file_name = f'{results_directory}{model_name}_results.csv'
 
