@@ -545,7 +545,16 @@ def run_experiment(model, model_names, n_epochs_override, hyperparameters, cutof
     if 'tuned' in model_name_fh:
         hyp_search_time = round(hyperparameters[key]['hyperparam_search_time'], 3)
         best_val_rmse = round(hyperparameters[key]['best_rmse'], 4)
-        total_time = training_time + hyp_search_time     
+        total_time = training_time + hyp_search_time 
+
+        if model_name in ['nbeats', 'lstm', 'gru']:
+            if n_epochs_override is None:
+                n_epochs = hyperparameters[key]['best_parameters']['n_epochs']
+            else:
+                n_epochs = n_epochs_override
+        else:
+            n_epochs = np.nan
+
     else:
         hyp_search_time = np.nan
         best_val_rmse = np.nan
@@ -556,13 +565,22 @@ def run_experiment(model, model_names, n_epochs_override, hyperparameters, cutof
     else:
         model_type = model_name_fh.split('_')[1]
 
-    if n_epochs_override:
+    if model_type == 'default' and n_epochs_override is None and model_name in ['nbeats', 'lstm', 'gru']:
+        n_epochs = 100
+    elif n_epochs_override:
         if model_name not in ['nbeats', 'lstm', 'gru']:
             n_epochs = np.nan
         else:
             n_epochs = n_epochs_override
+    else:
+        try:
+            n_epochs
+        except NameError:
+            n_epochs = np.nan
+
 
     has_n_epochs_override = True if n_epochs_override else False
+
 
     # Record results
     current_results['model_name_proper'].append(model_name_proper) 
@@ -732,3 +750,4 @@ def get_best_num_epochs(model_name):
                 best_num_epochs = num_epochs
                 
     return best_num_epochs
+
