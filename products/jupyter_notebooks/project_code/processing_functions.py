@@ -14,7 +14,7 @@ import warnings
 
 from darts.dataprocessing.transformers import Scaler
 from darts.models import (BlockRNNModel, ExponentialSmoothing, LightGBMModel, NBEATSModel,
-                          XGBModel)
+                          RandomForest, XGBModel)
 from darts.models.forecasting.baselines import NaiveDrift
 from darts.utils.callbacks import TFMProgressBar
 from darts.utils.timeseries_generation import datetime_attribute_timeseries as dt_attr
@@ -344,6 +344,13 @@ def get_model(model_name, fh, hyperparams, seed, version=None,
                     pl_trainer_kwargs = pl_trainer_kwargs
                 )
 
+        elif model_name == 'rf':
+            model = RandomForest(
+                lags = fh*2 if fh < 14 else fh,
+                lags_past_covariates = fh*2 if fh < 14 else fh,
+                output_chunk_length = fh
+            )
+
         elif model_name == 'xgboost':
             model = XGBModel(
                 lags = fh*2 if fh < 14 else fh,
@@ -397,6 +404,16 @@ def get_model(model_name, fh, hyperparams, seed, version=None,
                 optimizer_kwargs = {'lr': round(hyp[version][fh]['parameters']['lr'],7) },
             )
 
+        elif model_name == 'rf':
+            model = RandomForest(
+                lags = hyp[fh]['parameters']['lags'],
+                lags_past_covariates = hyp[fh]['parameters']['lags_past_covariates'],
+                n_estimators = hyp[fh]['parameters']['n_estimators'],
+                max_depth = hyp[fh]['parameters']['max_depth'],
+                output_chunk_length = fh,
+                random_state=seed
+            )
+
         elif model_name == 'xgboost':
             model = XGBModel(
                 lags = hyp[fh]['parameters']['lags'],
@@ -432,6 +449,7 @@ def get_reformatted_hyperparams(hyp_dict, forecast_horizons):
             'generic': {fh: {} for fh in forecast_horizons},
             'interpretable': {fh: {} for fh in forecast_horizons}
         },
+        'rf': {fh: {} for fh in forecast_horizons},
         'xgboost': {fh: {} for fh in forecast_horizons}
     }
 
@@ -562,7 +580,7 @@ def run_experiment(model, model_names, n_epochs_override, hyperparameters, cutof
     current_results['total_time'].append(total_time)
 
     results.update(current_results) 
-#TODO: COMMIT W/ MSG 'remove n_epoch_override file separator for lstm and gru
+    
     if model_name == 'nbeats': # breaking up the N-BEATS experiments to avoid Colab execution timeout and progress/data loss
         if model_type == 'default':
             file_name = f'{results_directory}{model_name}_{model_type}_outliers-{has_outliers}_epoch-override-{has_n_epochs_override}_results.csv'
