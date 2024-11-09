@@ -319,7 +319,7 @@ def dual_bar_chart(df, x,
     fig.show()
 
 def get_name_for_chart(row):
-    if row['model_type'] == 'tuned':
+    if row['model_type'] == 'tuned' and row['model_name_proper'] == 'N-BEATS':
         return 'NBEATS-T'
     elif 'generic' in row['model_name_fh']:
         return 'NBEATS-G'
