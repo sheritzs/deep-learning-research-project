@@ -705,24 +705,4 @@ def print_callback(study, trial):
   print(f"Current Best value: {study.best_value}, Best params: {study.best_trial.params}")
 
 
-def get_best_num_epochs(model_name):
-    """Searches through the checkpoint folders to retrieve epoch details for the lowest validation loss."""
-
-    best_val_loss = float('inf')
-    best_num_epochs = 0
-
-    for folder in glob.glob(f'darts_logs/{model_name}_*'):
-        best_epoch_files = glob.glob(f'{folder}/checkpoints/best-epoch*')
-
-        for e_file in best_epoch_files:
-            m1 = re.search('best-epoch=(.*)-val', e_file)
-            num_epochs = int(m1.group(1)) + 1 #add one because epoch count starts at 0
-            m2 = re.search('val_loss=(.*).ckpt', e_file)
-            val_loss = float(m2.group(1))
-
-            if val_loss < best_val_loss:
-                best_val_loss = val_loss
-                best_num_epochs = num_epochs
-                
-    return best_num_epochs
 
