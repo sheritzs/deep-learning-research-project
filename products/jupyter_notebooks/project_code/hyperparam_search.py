@@ -102,7 +102,7 @@ def objective_lgbm(trial: optuna.Trial, fh: int, model_name_fh: int,
 
 
 def hyperparameter_search(fh, model_name, common_arguments, n_trials, results_dict,
-                          results_directory, version=None, seed=None):
+                          results_directory, hyperparam_file, version=None, seed=None):
 
     model_name_fh = f'optuna_{model_name}_fh{fh}'
 
@@ -132,6 +132,7 @@ def hyperparameter_search(fh, model_name, common_arguments, n_trials, results_di
     # save trial results
     study.trials_dataframe().to_csv(f'{results_directory}{model_name_fh}_trials.csv')
     results_dict.update(results)
+    pf.post_results(results_dict, hyperparam_file, 'w')
 
     fig = plot_optimization_history(study, target_name='RMSE')
     fig.update_layout(
