@@ -29,8 +29,8 @@ import torch
 
 
 
-def objective_nbeats(trial: optuna.Trial, version: str, fh: int, model_name_fh: int, 
-                  common_arguments: dict, seed: int ) -> float:
+def objective_nbeats(trial: optuna.Trial, common_arguments:dict,  version: str, fh: int, 
+                  model_name_fh: int, seed: int) -> float:
     
     """Hyperparameter search objective"""
 
@@ -141,9 +141,40 @@ def objective_rnn(trial: optuna.Trial,  common_arguments:dict,  version: str, fh
 
     return rmse_score
 
-def objective_rf(trial: optuna.Trial, fh: int, model_name_fh: int, 
-                  common_arguments: dict, seed: int ) -> float:
-    pass
+def objective_rf(trial: optuna.Trial,  common_arguments:dict, fh: int, 
+                  model_name_fh: int, seed: int) -> float: 
+
+    LAGS = common_arguments['input_chunk_lengths']
+    N_ESTIMATORS = [50, 100, 150, 200]
+    MAX_DEPTH = [2, 5, 10, 15, 20]
+
+    rf_params = {
+                    'lags': trial.suggest_categorical("lags", LAGS),
+                    'lags_past_covariates': trial.suggest_categorical('lags_past_covariates', LAGS),
+                    'n_estimators': trial.suggest_categorical('n_estimators', N_ESTIMATORS),
+                    'max_depth': trial.suggest_categorical('max_depth',  MAX_DEPTH),
+                    'output_chunk_length': fh
+                    }
+
+    model = RandomForest(**rf_params)
+
+    model.fit(
+        series=common_arguments['scaled_data']['target_train_sub'],
+        past_covariates=common_arguments['scaled_data']['cov_train_sub'],
+        val_series=common_arguments['scaled_data']['target_val'],
+        val_past_covariates=common_arguments['scaled_data']['cov_val']
+        )
+
+    predictions = model.predict(n=fh,
+                                series=common_arguments['scaled_data']['target_train_main'],
+                                past_covariates=common_arguments['scaled_data']['cov_train_main']
+                                )
+    
+    target_scaler = common_arguments['scaled_data']['target_scaler']
+    predictions = target_scaler.inverse_transform(predictions)
+    rmse_score = rmse(predictions, common_arguments['target_test'][:fh])
+
+    return rmse_score
 
 def objective_xgb(trial: optuna.Trial, fh: int, model_name_fh: int, 
                   common_arguments: dict, seed: int ) -> float:
@@ -159,7 +190,8 @@ def hyperparameter_search(fh, model_name, common_arguments, n_trials, results_di
 
     if model_name == 'nbeats':
         model_name_fh = f'optuna_{model_name}_{version}_fh{fh}'
-    model_name_fh = f'optuna_{model_name}_fh{fh}'
+    else:
+        model_name_fh = f'optuna_{model_name}_fh{fh}'
 
     print(f'Running hyperparameter search for {model_name_fh}\n')
 
@@ -170,9 +202,10 @@ def hyperparameter_search(fh, model_name, common_arguments, n_trials, results_di
     if model_name in ['lstm', 'gru']:
         version = version.upper()
         func = lambda trial: objective_rnn(trial, common_arguments, version, fh, model_name_fh, seed) 
-
     elif model_name == 'nbeats':
         func = lambda trial: objective_nbeats(trial, common_arguments, version, fh, model_name_fh, seed)
+    elif model_name == 'rf':
+        func = lambda trial: objective_rf(trial, common_arguments, fh, model_name_fh, seed)
 
     study.optimize(func, n_trials=n_trials)
     end_time = time.perf_counter()
