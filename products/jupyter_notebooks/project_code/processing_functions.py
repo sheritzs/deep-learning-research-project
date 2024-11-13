@@ -704,5 +704,16 @@ def print_callback(study, trial):
   print(f"Current value: {trial.value}, Current params: {trial.params}")
   print(f"Current Best value: {study.best_value}, Best params: {study.best_trial.params}")
 
+def generate_cutoff_date(start_date: str, end_date:str, seed=None, n=1, replace=False) -> str | list:
+    """
+    Generates one or more random dates from a given range, i.e. start_date to end_date (inclusive)
+    Entry date format: 'yyyy-mm-dd'; e.g. '2000-01-01'
+    """
+    all_dates = pd.date_range(start_date, end_date).to_series()
+    selected_dates = all_dates.sample(n, replace=replace, random_state=seed)
+    final_dates = [date.strftime('%Y-%m-%d') for date in selected_dates]
 
-
+    if n == 1:
+        return final_dates[0]
+    else:
+        return final_dates
