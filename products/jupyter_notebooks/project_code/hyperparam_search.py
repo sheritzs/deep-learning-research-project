@@ -28,9 +28,62 @@ from optuna.visualization import plot_optimization_history
 import torch
 
 
+
 def objective_nbeats(trial: optuna.Trial, version: str, fh: int, model_name_fh: int, 
                   common_arguments: dict, seed: int ) -> float:
-    pass
+    
+    """Hyperparameter search objective"""
+
+    pruner = pf.PyTorchLightningPruningCallback(trial, monitor='val_loss')
+    callbacks = [pruner]
+
+    if torch.cuda.is_available():
+        pl_trainer_kwargs = {
+            'accelerator': 'gpu',
+            'callbacks': callbacks,
+        }
+    else:
+        pl_trainer_kwargs = {'callbacks': callbacks}
+
+    input_chunk_lengths = common_arguments['input_chunk_lengths']
+    batch_sizes = common_arguments['batch_sizes']
+
+    nbeats_params = {
+                    'input_chunk_length': trial.suggest_categorical('input_chunk_length', input_chunk_lengths),
+                    'output_chunk_length': fh, 
+                    'batch_size': trial.suggest_categorical('batch_size', batch_sizes),
+                    'num_stacks': trial.suggest_categorical('num_stacks', [10, 20, 30]), # only used in model if generic_architecture is set to True,
+                    'num_blocks': trial.suggest_categorical('num_blocks', [1, 2, 3]),
+                    'num_layers': trial.suggest_categorical('num_layers', [3, 4, 5]),
+                    'layer_widths': trial.suggest_categorical('layer_widths', [256, 512]),
+                    'dropout': trial.suggest_float('dropout', 0, 0.4),
+                    'optimizer_kwargs': {'lr': trial.suggest_float('lr',  1e-5, 1e-1, log=True)},
+                    'n_epochs': trial.suggest_int('n_epochs', 15, 150, step=15),
+                    'activation': trial.suggest_categorical('activation', ['ReLU', 'LeakyReLU']),
+                    'generic_architecture': True if version == 'generic' else False,
+                    'pl_trainer_kwargs': pl_trainer_kwargs,
+                    'model_name': f'{model_name_fh}_{datetime.datetime.now().strftime(("%Y%m%d-%H%M%S"))}',
+                    'save_checkpoints': True,
+                    'force_reset': True,
+                    'random_state': seed
+                    }
+
+    model = NBEATSModel(**nbeats_params)
+
+    model.fit(
+        series=common_arguments['unscaled_data']['target_train_sub'],
+        past_covariates=common_arguments['unscaled_data']['cov_train_sub'],
+        val_series=common_arguments['unscaled_data']['target_val'],
+        val_past_covariates=common_arguments['unscaled_data']['cov_val']
+        )
+
+    predictions = model.predict(n=fh,
+                                series=common_arguments['unscaled_data']['target_train_main'],
+                                past_covariates=common_arguments['unscaled_data']['cov_train_main']
+                                )
+    rmse_score = rmse(predictions, common_arguments['target_test'][:fh])
+
+    return rmse_score
 
 def objective_rnn(trial: optuna.Trial,  common_arguments:dict,  version: str, fh: int, 
                   model_name_fh: int, seed: int ) -> float: 
@@ -49,17 +102,17 @@ def objective_rnn(trial: optuna.Trial,  common_arguments:dict,  version: str, fh
         pl_trainer_kwargs = {'callbacks': callbacks}
 
     input_chunk_lengths = common_arguments['input_chunk_lengths']
-    seed = common_arguments['seed']
+    batch_sizes = common_arguments['batch_sizes']
 
     rnn_params = {
                     'input_chunk_length': trial.suggest_categorical('input_chunk_length', input_chunk_lengths),
-                    'batch_size': trial.suggest_categorical('batch_size', [32, 64, 128, 256]),
+                    'output_chunk_length': fh, 
+                    'batch_size': trial.suggest_categorical('batch_size', batch_sizes),
                     'hidden_dim': trial.suggest_int('hidden_dim', 10, 40),
                     'n_rnn_layers': trial.suggest_int('n_rnn_layers', 2, 10),
                     'dropout': trial.suggest_float('dropout', 0, 0.4),
                     'optimizer_kwargs': {'lr': trial.suggest_float('lr',  1e-5, 1e-1, log=True)},
                     'n_epochs': trial.suggest_int('n_epochs', 15, 150, step=15),
-                    'output_chunk_length': fh, 
                     'model': version,
                     'pl_trainer_kwargs': pl_trainer_kwargs,
                     'model_name': f'{model_name_fh}_{datetime.datetime.now().strftime(("%Y%m%d-%H%M%S"))}',
@@ -71,18 +124,18 @@ def objective_rnn(trial: optuna.Trial,  common_arguments:dict,  version: str, fh
     model = BlockRNNModel(**rnn_params)
 
     model.fit(
-        series=common_arguments['target_train_sub'],
-        past_covariates=common_arguments['cov_train_sub'],
-        val_series=common_arguments['target_val'],
-        val_past_covariates=common_arguments['cov_val']
+        series=common_arguments['scaled_data']['target_train_sub'],
+        past_covariates=common_arguments['scaled_data']['cov_train_sub'],
+        val_series=common_arguments['scaled_data']['target_val'],
+        val_past_covariates=common_arguments['scaled_data']['cov_val']
         )
 
     predictions = model.predict(n=fh,
-                                series=common_arguments['target_train_main'],
-                                past_covariates=common_arguments['cov_train_main']
+                                series=common_arguments['scaled_data']['target_train_main'],
+                                past_covariates=common_arguments['scaled_data']['cov_train_main']
                                 )
     
-    target_scaler = common_arguments['target_scaler']
+    target_scaler = common_arguments['scaled_data']['target_scaler']
     predictions = target_scaler.inverse_transform(predictions)
     rmse_score = rmse(predictions, common_arguments['target_test'][:fh])
 
@@ -104,6 +157,8 @@ def objective_lgbm(trial: optuna.Trial, fh: int, model_name_fh: int,
 def hyperparameter_search(fh, model_name, common_arguments, n_trials, results_dict,
                           results_directory, hyperparam_file, version=None, seed=None):
 
+    if model_name == 'nbeats':
+        model_name_fh = f'optuna_{model_name}_{version}_fh{fh}'
     model_name_fh = f'optuna_{model_name}_fh{fh}'
 
     print(f'Running hyperparameter search for {model_name_fh}\n')
@@ -123,7 +178,7 @@ def hyperparameter_search(fh, model_name, common_arguments, n_trials, results_di
     end_time = time.perf_counter()
     operation_runtime = round((end_time - start_time)/60, 2)
 
-    results = {model_name: {
+    results = {model_name_fh: {
             'best_rmse': round(study.best_value, 4),
             'best_parameters': study.best_trial.params,
             'hyperparam_search_time': operation_runtime
