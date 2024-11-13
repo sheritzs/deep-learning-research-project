@@ -704,50 +704,5 @@ def print_callback(study, trial):
   print(f"Current value: {trial.value}, Current params: {trial.params}")
   print(f"Current Best value: {study.best_value}, Best params: {study.best_trial.params}")
 
-def hyperparameter_search(objective, n_trials, model_name):
-    """
-    Completes an Optuna hyperparameter search and returns the results
-    after n_trials.
-     """
-    start_time = time.perf_counter()
-    study = optuna.create_study(direction='minimize')
 
-    # limit number of trials
-    study.optimize(objective, n_trials=n_trials)
-
-    end_time = time.perf_counter()
-    operation_runtime = round((end_time - start_time)/60, 2)
-
-    #print the best value and best hyperparameters:
-    # print(f'Best value: {study.best_value:.4f}\nBest parameters: {study.best_trial.params}')
-    # print(f'Operation runtime: {operation_runtime} minutes')
-
-    results = {model_name: {
-        'best_rmse': round(study.best_value, 4),
-        'best_parameters': study.best_trial.params,
-        'hyperparam_search_time': operation_runtime
-    }}
-
-    return results
-
-def get_best_num_epochs(model_name):
-    """Searches through the checkpoint folders to retrieve epoch details for the lowest validation loss."""
-
-    best_val_loss = float('inf')
-    best_num_epochs = 0
-
-    for folder in glob.glob(f'darts_logs/{model_name}_*'):
-        best_epoch_files = glob.glob(f'{folder}/checkpoints/best-epoch*')
-
-        for e_file in best_epoch_files:
-            m1 = re.search('best-epoch=(.*)-val', e_file)
-            num_epochs = int(m1.group(1)) + 1 #add one because epoch count starts at 0
-            m2 = re.search('val_loss=(.*).ckpt', e_file)
-            val_loss = float(m2.group(1))
-
-            if val_loss < best_val_loss:
-                best_val_loss = val_loss
-                best_num_epochs = num_epochs
-                
-    return best_num_epochs
 
