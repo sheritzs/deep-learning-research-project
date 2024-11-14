@@ -14,7 +14,6 @@ import pandas as pd
 from project_code import processing_functions as pf
 import time
 
-
 from darts.dataprocessing.transformers import Scaler
 from darts.metrics import rmse, mae
 from darts.models import (BlockRNNModel, LightGBMModel, NBEATSModel, RandomForest, XGBModel)
@@ -207,9 +206,8 @@ def objective_lgbm(trial: optuna.Trial,  common_inputs:dict, fh: int,
                 
     return score
 
-
 def hyperparameter_search(fh, model_name, common_inputs, n_trials, results_dict,
-                          results_directory, hyperparam_file, version=None, seed=None):
+                          results_directory, hyperparam_file, version=None, error_metric='rmse', seed=None):
 
     if model_name == 'nbeats':
         model_name_fh = f'optuna_{model_name}_{version}_fh{fh}'
@@ -220,15 +218,19 @@ def hyperparameter_search(fh, model_name, common_inputs, n_trials, results_dict,
 
     start_time = time.perf_counter()
 
-    study = optuna.create_study(direction='minimize') 
+    study = optuna.create_study(direction='minimize')
 
     if model_name in ['lstm', 'gru']:
         version = version.upper()
-        func = lambda trial: objective_rnn(trial, common_inputs, version, fh, model_name_fh, seed) 
+        func = lambda trial: objective_rnn(trial, common_inputs, version, fh, model_name_fh, error_metric, seed) 
     elif model_name == 'nbeats':
-        func = lambda trial: objective_nbeats(trial, common_inputs, version, fh, model_name_fh, seed)
+        func = lambda trial: objective_nbeats(trial, common_inputs, version, fh, model_name_fh, error_metric, seed) 
     elif model_name == 'rf':
-        func = lambda trial: objective_rf(trial, common_inputs, fh, model_name_fh, seed)
+        func = lambda trial: objective_rf(trial, common_inputs, fh, model_name_fh, error_metric, seed) 
+    elif model_name == 'xgboost': 
+        func = lambda trial: objective_xgb(trial, common_inputs, fh, model_name_fh, error_metric, seed) 
+    elif model_name == 'lgbm':
+        func = lambda trial: objective_lgbm(trial, common_inputs, fh, model_name_fh, error_metric, seed) 
 
     study.optimize(func, n_trials=n_trials)
     end_time = time.perf_counter()
@@ -253,5 +255,5 @@ def hyperparameter_search(fh, model_name, common_inputs, n_trials, results_dict,
             showlegend=True
             )
     fig.write_image(f'{results_directory}figures/{model_name_fh}_trial_history.png')
-    
+
     print(f'\nHyperparameter search for {model_name_fh} completed.\n')
