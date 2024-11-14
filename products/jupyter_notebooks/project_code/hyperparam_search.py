@@ -16,7 +16,7 @@ import time
 
 
 from darts.dataprocessing.transformers import Scaler
-from darts.metrics import rmse
+from darts.metrics import rmse, mae
 from darts.models import (BlockRNNModel, LightGBMModel, NBEATSModel, RandomForest, XGBModel)
 from darts.utils.callbacks import TFMProgressBar
 import kaleido
@@ -28,11 +28,50 @@ from optuna.visualization import plot_optimization_history
 import torch
 
 
+def get_error_score(model, fh:int, common_inputs: dict, mode: str='hyperparam_search', 
+                    error_metric: str='rmse', scaled_inputs=True):
+    
+    """Generates an error score based on the given inputs."""
+
+    if mode == 'hyperparam_search':
+
+        if scaled_inputs == True:
+            model.fit(
+                    series=common_inputs['scaled_data']['target_train'],
+                    past_covariates=common_inputs['scaled_data']['cov_train']
+                    )
+            predictions = model.predict(
+                                        n=fh,
+                                        series=common_inputs['scaled_data']['target_train'],
+                                        past_covariates=common_inputs['scaled_data']['cov_train']
+                                        )
+            target_scaler = common_inputs['scaled_data']['target_scaler']
+            predictions = target_scaler.inverse_transform(predictions)
+
+        elif scaled_inputs == False:
+            model.fit(
+                    series=common_inputs['unscaled_data']['target_train'],
+                    past_covariates=common_inputs['unscaled_data']['cov_train'],
+                    )
+            predictions = model.predict(n=fh,
+                                        series=common_inputs['unscaled_data']['target_train'],
+                                        past_covariates=common_inputs['unscaled_data']['cov_train']
+                                        )
+            
+        if error_metric == 'rmse':
+            score = rmse(predictions, common_inputs['target_test'][:fh])
+        elif error_metric == 'mae':
+            score = mae(predictions, common_inputs['target_test'][:fh])
+
+    elif mode == 'experiments':
+        pass #TODO: incorporate model evaluation for experiments in future version
+
+    return score
 
 def objective_nbeats(trial: optuna.Trial, common_inputs:dict,  version: str, fh: int, 
-                  model_name_fh: int, seed: int) -> float:
+                  model_name_fh: str, error_metric: str, seed: int) -> float: 
     
-    """Hyperparameter search objective"""
+    """N-BEATS hyperparameter search objective""" 
 
     pruner = pf.PyTorchLightningPruningCallback(trial, monitor='val_loss')
     callbacks = [pruner]
@@ -45,20 +84,19 @@ def objective_nbeats(trial: optuna.Trial, common_inputs:dict,  version: str, fh:
     else:
         pl_trainer_kwargs = {'callbacks': callbacks}
 
-    input_chunk_lengths = common_inputs['input_chunk_lengths']
     batch_sizes = common_inputs['batch_sizes']
 
     nbeats_params = {
-                    'input_chunk_length': trial.suggest_categorical('input_chunk_length', input_chunk_lengths),
+                    'input_chunk_length': trial.suggest_int('input_chunk_length', 3, 84),
                     'output_chunk_length': fh, 
                     'batch_size': trial.suggest_categorical('batch_size', batch_sizes),
-                    'num_stacks': trial.suggest_categorical('num_stacks', [10, 20, 30]), # only used in model if generic_architecture is set to True,
+                    'num_stacks': trial.suggest_categorical('num_stacks', [10, 20, 30]), 
                     'num_blocks': trial.suggest_categorical('num_blocks', [1, 2, 3]),
                     'num_layers': trial.suggest_categorical('num_layers', [3, 4, 5]),
                     'layer_widths': trial.suggest_categorical('layer_widths', [256, 512]),
                     'dropout': trial.suggest_float('dropout', 0, 0.4),
                     'optimizer_kwargs': {'lr': trial.suggest_float('lr',  1e-5, 1e-1, log=True)},
-                    'n_epochs': trial.suggest_int('n_epochs', 15, 150, step=15),
+                    'n_epochs': trial.suggest_int('n_epochs', 15, 150),
                     'activation': trial.suggest_categorical('activation', ['ReLU', 'LeakyReLU']),
                     'generic_architecture': True if version == 'generic' else False,
                     'pl_trainer_kwargs': pl_trainer_kwargs,
@@ -70,23 +108,15 @@ def objective_nbeats(trial: optuna.Trial, common_inputs:dict,  version: str, fh:
 
     model = NBEATSModel(**nbeats_params)
 
-    model.fit(
-        series=common_inputs['unscaled_data']['target_train'],
-        past_covariates=common_inputs['unscaled_data']['cov_train'],
-        )
+    score = get_error_score(model=model, fh=fh, common_inputs=common_inputs, mode='hyperparam_search', 
+                    error_metric=error_metric, scaled_inputs=False)
 
-    predictions = model.predict(n=fh,
-                                series=common_inputs['unscaled_data']['target_train'],
-                                past_covariates=common_inputs['unscaled_data']['cov_train']
-                                )
-    rmse_score = rmse(predictions, common_inputs['target_test'][:fh])
-
-    return rmse_score
+    return score
 
 def objective_rnn(trial: optuna.Trial,  common_inputs:dict,  version: str, fh: int, 
-                  model_name_fh: int, seed: int ) -> float: 
+                  model_name_fh: str, error_metric: str, seed: int) -> float:  
 
-    """Hyperparameter search objective"""
+    """Recurrent Neural Network hyperparameter search objective"""
 
     pruner = pf.PyTorchLightningPruningCallback(trial, monitor='val_loss')
     callbacks = [pruner]
@@ -99,18 +129,17 @@ def objective_rnn(trial: optuna.Trial,  common_inputs:dict,  version: str, fh: i
     else:
         pl_trainer_kwargs = {'callbacks': callbacks}
 
-    input_chunk_lengths = common_inputs['input_chunk_lengths']
     batch_sizes = common_inputs['batch_sizes']
 
     rnn_params = {
-                    'input_chunk_length': trial.suggest_categorical('input_chunk_length', input_chunk_lengths),
+                    'input_chunk_length': trial.suggest_int('input_chunk_length', 3, 84),
                     'output_chunk_length': fh, 
                     'batch_size': trial.suggest_categorical('batch_size', batch_sizes),
-                    'hidden_dim': trial.suggest_int('hidden_dim', 10, 40),
+                    'hidden_dim': trial.suggest_int('hidden_dim', 2, 50), 
                     'n_rnn_layers': trial.suggest_int('n_rnn_layers', 2, 10),
                     'dropout': trial.suggest_float('dropout', 0, 0.4),
                     'optimizer_kwargs': {'lr': trial.suggest_float('lr',  1e-5, 1e-1, log=True)},
-                    'n_epochs': trial.suggest_int('n_epochs', 15, 150, step=15),
+                    'n_epochs': trial.suggest_int('n_epochs', 15, 150),
                     'model': version,
                     'pl_trainer_kwargs': pl_trainer_kwargs,
                     'model_name': f'{model_name_fh}_{datetime.datetime.now().strftime(("%Y%m%d-%H%M%S"))}',
@@ -120,63 +149,63 @@ def objective_rnn(trial: optuna.Trial,  common_inputs:dict,  version: str, fh: i
                     }
 
     model = BlockRNNModel(**rnn_params)
-
-    model.fit(
-        series=common_inputs['scaled_data']['target_train'],
-        past_covariates=common_inputs['scaled_data']['cov_train'],
-        )
-
-    predictions = model.predict(n=fh,
-                                series=common_inputs['scaled_data']['target_train'],
-                                past_covariates=common_inputs['scaled_data']['cov_train']
-                                )
+    score = get_error_score(model=model, fh=fh, common_inputs=common_inputs, mode='hyperparam_search', 
+                    error_metric=error_metric, scaled_inputs=True) 
     
-    target_scaler = common_inputs['scaled_data']['target_scaler']
-    predictions = target_scaler.inverse_transform(predictions)
-    rmse_score = rmse(predictions, common_inputs['target_test'][:fh])
-
-    return rmse_score
+    return score
 
 def objective_rf(trial: optuna.Trial,  common_inputs:dict, fh: int, 
-                  model_name_fh: int, seed: int) -> float: 
+                  model_name_fh: str, error_metric: str, seed: int) -> float:
 
-    LAGS = common_inputs['input_chunk_lengths']
-    N_ESTIMATORS = [50, 100, 150, 200]
-    MAX_DEPTH = [2, 5, 10, 15, 20]
+    """Random Forest hyperparameter search objective""" 
 
     rf_params = {
-                    'lags': trial.suggest_categorical("lags", LAGS),
-                    'lags_past_covariates': trial.suggest_categorical('lags_past_covariates', LAGS),
-                    'n_estimators': trial.suggest_categorical('n_estimators', N_ESTIMATORS),
-                    'max_depth': trial.suggest_categorical('max_depth',  MAX_DEPTH),
+                    'lags': trial.suggest_int("lags", 1, 60),
+                    'lags_past_covariates': trial.suggest_int('lags_past_covariates', 1, 60), 
+                    'n_estimators': trial.suggest_int('n_estimators', 50, 200), 
+                    'max_depth': trial.suggest_int('max_depth',  2, 15),
                     'output_chunk_length': fh
                     }
 
     model = RandomForest(**rf_params)
+    score = get_error_score(model=model, fh=fh, common_inputs=common_inputs, mode='hyperparam_search', 
+                    error_metric=error_metric, scaled_inputs=True)
+    return score
 
-    model.fit(
-        series=common_inputs['scaled_data']['target_train'],
-        past_covariates=common_inputs['scaled_data']['cov_train']
-        )
+def objective_xgb(trial: optuna.Trial,  common_inputs:dict, fh: int, 
+                  model_name_fh: str, error_metric: str, seed: int) -> float: 
 
-    predictions = model.predict(n=fh,
-                                series=common_inputs['scaled_data']['target_train'],
-                                past_covariates=common_inputs['scaled_data']['cov_train']
-                                )
-    
-    target_scaler = common_inputs['scaled_data']['target_scaler']
-    predictions = target_scaler.inverse_transform(predictions)
-    rmse_score = rmse(predictions, common_inputs['target_test'][:fh])
+    """XGBoost hyperparameter search objective""" 
 
-    return rmse_score
+    xgb_params = {
+                    'lags': trial.suggest_int("lags", 1, 60),
+                    'lags_past_covariates': trial.suggest_int('lags_past_covariates', 1, 60), 
+                    'output_chunk_length': fh
+                    }
 
-def objective_xgb(trial: optuna.Trial, fh: int, model_name_fh: int, 
-                  common_inputs: dict, seed: int ) -> float:
-    pass
+    model = XGBModel(**xgb_params)
+    score = get_error_score(model=model, fh=fh, common_inputs=common_inputs, mode='hyperparam_search', 
+                    error_metric=error_metric, scaled_inputs=True) 
+                
+    return score
 
-def objective_lgbm(trial: optuna.Trial, fh: int, model_name_fh: int, 
-                  common_inputs: dict, seed: int ) -> float:
-    pass
+def objective_lgbm(trial: optuna.Trial,  common_inputs:dict, fh: int, 
+                  model_name_fh: str, error_metric: str, seed: int) -> float:
+
+    """LightGBM hyperparameter search objective""" 
+
+    lgbm_params = {
+                    'lags': trial.suggest_int("lags", 1, 60),
+                    'lags_past_covariates': trial.suggest_int('lags_past_covariates', 1, 60),
+                    'output_chunk_length': fh,
+                    'verbose': -1
+                    }
+
+    model = LightGBMModel(**lgbm_params)
+    score = get_error_score(model=model, fh=fh, common_inputs=common_inputs, mode='hyperparam_search', 
+                    error_metric=error_metric, scaled_inputs=True) 
+                
+    return score
 
 
 def hyperparameter_search(fh, model_name, common_inputs, n_trials, results_dict,
