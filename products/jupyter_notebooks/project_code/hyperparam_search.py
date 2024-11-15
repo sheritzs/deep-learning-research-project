@@ -16,7 +16,7 @@ import time
 
 from darts.dataprocessing.transformers import Scaler
 from darts.metrics import rmse, mae
-from darts.models import (BlockRNNModel, LightGBMModel, NBEATSModel, RandomForest, XGBModel)
+from darts.models import (BlockRNNModel, LightGBMModel, NBEATSModel, NHiTSModel, RandomForest, XGBModel)
 from darts.utils.callbacks import TFMProgressBar
 import kaleido
 from pytorch_lightning.callbacks import Callback
@@ -63,7 +63,7 @@ def get_error_score(model, fh:int, common_inputs: dict, mode: str='hyperparam_se
             score = mae(predictions, common_inputs['target_test'][:fh])
 
     elif mode == 'experiments':
-        pass #TODO: incorporate model evaluation for experiments in future version
+        pass #TODO: incorporate model evaluation function for experiments in future version
 
     return score
 
@@ -99,7 +99,7 @@ def objective_nbeats(trial: optuna.Trial, common_inputs:dict,  version: str, fh:
                     'activation': trial.suggest_categorical('activation', ['ReLU', 'LeakyReLU']),
                     'generic_architecture': True if version == 'generic' else False,
                     'pl_trainer_kwargs': pl_trainer_kwargs,
-                    'model_name': f'{model_name_fh}_{datetime.datetime.now().strftime(("%Y%m%d-%H%M%S"))}',
+                    'model_name': model_name_fh,
                     'save_checkpoints': True,
                     'force_reset': True,
                     'random_state': seed
@@ -141,7 +141,7 @@ def objective_rnn(trial: optuna.Trial,  common_inputs:dict,  version: str, fh: i
                     'n_epochs': trial.suggest_int('n_epochs', 15, 150),
                     'model': version,
                     'pl_trainer_kwargs': pl_trainer_kwargs,
-                    'model_name': f'{model_name_fh}_{datetime.datetime.now().strftime(("%Y%m%d-%H%M%S"))}',
+                    'model_name': model_name_fh,
                     'save_checkpoints': True,
                     'force_reset': True,
                     'random_state': seed
@@ -230,7 +230,10 @@ def hyperparameter_search(fh, model_name, common_inputs, n_trials, results_dict,
     elif model_name == 'xgboost': 
         func = lambda trial: objective_xgb(trial, common_inputs, fh, model_name_fh, error_metric, seed) 
     elif model_name == 'lgbm':
-        func = lambda trial: objective_lgbm(trial, common_inputs, fh, model_name_fh, error_metric, seed) 
+        func = lambda trial: objective_lgbm(trial, common_inputs, fh, model_name_fh, error_metric, seed)
+    elif model_name == 'nhits': 
+        func = lambda trial: objective_nhits(trial, common_inputs, fh, model_name_fh, error_metric, seed) 
+     
 
     study.optimize(func, n_trials=n_trials)
     end_time = time.perf_counter()
@@ -257,3 +260,46 @@ def hyperparameter_search(fh, model_name, common_inputs, n_trials, results_dict,
     fig.write_image(f'{results_directory}figures/{model_name_fh}_trial_history.png')
 
     print(f'\nHyperparameter search for {model_name_fh} completed.\n')
+
+def objective_nhits(trial: optuna.Trial, common_inputs:dict, fh: int,
+                  model_name_fh: str, error_metric: str, seed: int) -> float:
+
+    """N-HiTS hyperparameter search objective"""
+
+    pruner = pf.PyTorchLightningPruningCallback(trial, monitor='val_loss')
+    callbacks = [pruner]
+
+    if torch.cuda.is_available():
+        pl_trainer_kwargs = {
+            'accelerator': 'gpu',
+            'callbacks': callbacks,
+        }
+    else:
+        pl_trainer_kwargs = {'callbacks': callbacks}
+
+    batch_sizes = common_inputs['batch_sizes']
+    
+    nhits_params = {
+                    'input_chunk_length': trial.suggest_int('input_chunk_length', 3, 84),
+                    'output_chunk_length': fh,
+                    'batch_size': trial.suggest_categorical('batch_size', batch_sizes),
+                    'num_stacks': trial.suggest_categorical('num_stacks', [10, 20, 30]),
+                    'num_blocks': trial.suggest_categorical('num_blocks', [1, 2, 3]),
+                    'num_layers': trial.suggest_categorical('num_layers', [3, 4, 5]),
+                    'layer_widths': trial.suggest_categorical('layer_widths', [256, 512]),
+                    'dropout': trial.suggest_float('dropout', 0, 0.4),
+                    'optimizer_kwargs': {'lr': trial.suggest_float('lr',  1e-5, 1e-1, log=True)},
+                    'n_epochs': trial.suggest_int('n_epochs', 15, 150),
+                    'pl_trainer_kwargs': pl_trainer_kwargs,
+                    'model_name': model_name_fh,
+                    'save_checkpoints': True,
+                    'force_reset': True,
+                    'random_state': seed
+                    }
+
+    model = NHiTSModel(**nhits_params)
+
+    score = get_error_score(model=model, fh=fh, common_inputs=common_inputs, mode='hyperparam_search',
+                    error_metric=error_metric, scaled_inputs=True)
+
+    return score
