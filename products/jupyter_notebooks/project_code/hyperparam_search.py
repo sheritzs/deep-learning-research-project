@@ -100,8 +100,6 @@ def objective_nbeats(trial: optuna.Trial, common_inputs:dict,  version: str, fh:
                     'generic_architecture': True if version == 'generic' else False,
                     'pl_trainer_kwargs': pl_trainer_kwargs,
                     'model_name': model_name_fh,
-                    'save_checkpoints': True,
-                    'force_reset': True,
                     'random_state': seed
                     }
 
@@ -142,8 +140,6 @@ def objective_rnn(trial: optuna.Trial,  common_inputs:dict,  version: str, fh: i
                     'model': version,
                     'pl_trainer_kwargs': pl_trainer_kwargs,
                     'model_name': model_name_fh,
-                    'save_checkpoints': True,
-                    'force_reset': True,
                     'random_state': seed
                     }
 
@@ -292,8 +288,6 @@ def objective_nhits(trial: optuna.Trial, common_inputs:dict, fh: int,
                     'n_epochs': trial.suggest_int('n_epochs', 15, 150),
                     'pl_trainer_kwargs': pl_trainer_kwargs,
                     'model_name': model_name_fh,
-                    'save_checkpoints': True,
-                    'force_reset': True,
                     'random_state': seed
                     }
 
