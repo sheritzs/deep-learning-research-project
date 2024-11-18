@@ -242,7 +242,7 @@ def hyperparameter_search(fh, model_name, common_inputs, n_trials, results_dict,
         }}
 
     # save trial results
-    study.trials_dataframe().to_csv(f'{results_directory}{model_name_fh}_trials.csv')
+    study.trials_dataframe().to_csv(f'{results_directory}trials/{model_name_fh}_trials.csv')
     results_dict.update(results)
     pf.post_results(results_dict, hyperparam_file, 'w')
 
