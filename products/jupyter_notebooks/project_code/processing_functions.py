@@ -640,14 +640,15 @@ def run_experiment(model, model_names, n_epochs_override, hyperparameters, cutof
 
     results.update(current_results) 
     
-    if model_name == 'nbeats': # breaking up the N-BEATS experiments to avoid Colab execution timeout and progress/data loss
-        if model_type == 'default':
-            file_name = f'{results_directory}{model_name}_{model_type}_outliers-{has_outliers}_epoch-override-{has_n_epochs_override}_results.csv'
-        else:
-            file_name = f'{results_directory}{model_name}_{model_type}_epoch-override-{has_n_epochs_override}_results.csv'
-    else:
-        file_name = f'{results_directory}{model_name}_results.csv'
+    # if model_name == 'nbeats': # breaking up the N-BEATS experiments to avoid Colab execution timeout and progress/data loss
+    #     if model_type == 'default':
+    #         file_name = f'{results_directory}{model_name}_{model_type}_outliers-{has_outliers}_epoch-override-{has_n_epochs_override}_results.csv'
+    #     else:
+    #         file_name = f'{results_directory}{model_name}_{model_type}_epoch-override-{has_n_epochs_override}_results.csv'
+    # else:
+    #     file_name = f'{results_directory}{model_name}_results.csv'
 
+    file_name = f'{results_directory}{model_name}_results.csv' 
     pd.DataFrame(results).to_csv(file_name, index=False)
 
 
