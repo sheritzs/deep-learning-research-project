@@ -15,7 +15,7 @@ import warnings
 from darts.dataprocessing.transformers import Scaler
 from darts.models import (BlockRNNModel, ExponentialSmoothing, LightGBMModel, NBEATSModel,
                           NHiTSModel, RandomForest, XGBModel)
-from darts.models.forecasting.baselines import NaiveDrift
+from darts.models.forecasting.baselines import NaiveDrift, NaiveMean, NaiveMovingAverage,  NaiveSeasonal
 from darts.utils.callbacks import TFMProgressBar
 from darts.utils.timeseries_generation import datetime_attribute_timeseries as dt_attr
 from darts.utils.utils import ModelMode, SeasonalityMode
@@ -29,6 +29,8 @@ from tqdm.notebook import tqdm
 
 # metrics
 from darts.metrics import mae, rmse
+
+non_ml_models = ['ets', 'naive_drift', 'naive_mean', 'naive_moving_average', 'naive_seasonal']
 
 
 def download_data(api_call: str, file_path: str, file_name: str):
@@ -277,19 +279,25 @@ def get_model(model_name, fh, hyperparams, seed, version=None,
 
     if model_name == 'nbeats': 
         model_name_fh = f'{model_name}_{model_type}_{version}_fh{fh}' 
-    elif model_name not in ['naive_drift', 'ets']:
+    elif model_name not in non_ml_models:
         model_name_fh = f'{model_name}_{model_type}_fh{fh}'
     else:
         model_name_fh = f'{model_name}_fh{fh}'
 
-    if model_name == 'ets':
-        model = ExponentialSmoothing(trend=ModelMode.ADDITIVE,
-                                    seasonal=SeasonalityMode.ADDITIVE,
-                                    seasonal_periods=365)
-        return model, model_name_fh, n_epochs_override
-    
-    if model_name == 'naive_drift':
-        model = NaiveDrift()
+    if model_name in non_ml_models:
+        if model_name == 'ets':
+            model = ExponentialSmoothing(trend=ModelMode.ADDITIVE,
+                                        seasonal=SeasonalityMode.ADDITIVE,
+                                        seasonal_periods=365)    
+        if model_name == 'naive_drift':
+            model = NaiveDrift()
+        if model_name == 'naive_seasonal':
+            model = NaiveSeasonal(K=365)
+        if model_name == 'naive_mean':
+            model = NaiveMean()
+        if model_name == 'naive_moving_average':
+            model = NaiveMovingAverage(input_chunk_length=fh*2)
+        
         return model, model_name_fh, n_epochs_override
 
     if model_name in ['lstm', 'gru', 'nbeats', 'nhits']:
@@ -528,7 +536,7 @@ def run_experiment(model, model_names, n_epochs_override, hyperparameters, cutof
 
     target_train, target_test, cov_train = train_test_split(cutoff_date, df_outliers, df_clean,  has_outliers=has_outliers)
 
-    if model_name not in ['nbeats', 'ets', 'naive_drift'] :
+    if model_name not in non_ml_models and model_name != 'nbeats':
         target_scaler = Scaler()
         target_train = target_scaler.fit_transform(target_train)
         cov_scaler = Scaler() 
@@ -536,7 +544,7 @@ def run_experiment(model, model_names, n_epochs_override, hyperparameters, cutof
 
     start_time = time.perf_counter()
 
-    if model_name in ['naive_drift', 'ets']:
+    if model_name in non_ml_models:
         model.fit(series=target_train)
 
     elif model_name in ['nbeats', 'lstm', 'gru']:
@@ -560,14 +568,14 @@ def run_experiment(model, model_names, n_epochs_override, hyperparameters, cutof
     end_time = time.perf_counter()
     training_time = round((end_time - start_time) / 60, 3)
 
-    if model_name in ['naive_drift', 'ets']:
+    if model_name in non_ml_models:
         predictions = model.predict(n=fh)
     else:
         predictions = model.predict(n=fh,
                                     series=target_train,
                                     past_covariates=cov_train)
         
-    if model_name not in ['naive_drift', 'ets', 'nbeats']:
+    if model_name not in non_ml_models and model_name != 'nbeats':
         predictions = target_scaler.inverse_transform(predictions)
 
     rmse_score = round(rmse(predictions, target_test[:fh]), 4)
@@ -593,7 +601,7 @@ def run_experiment(model, model_names, n_epochs_override, hyperparameters, cutof
         best_val_rmse = np.nan
         total_time = round(training_time, 3)
 
-    if model_name in ['naive_drift', 'ets']:
+    if model_name in non_ml_models:
         model_type = 'default'
     else:
         model_type = model_name_fh.split('_')[1]
