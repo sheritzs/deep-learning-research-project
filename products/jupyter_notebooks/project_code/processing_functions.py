@@ -14,7 +14,7 @@ import warnings
 
 from darts.dataprocessing.transformers import Scaler
 from darts.models import (BlockRNNModel, ExponentialSmoothing, LightGBMModel, NBEATSModel,
-                          RandomForest, XGBModel)
+                          NHiTSModel, RandomForest, XGBModel)
 from darts.models.forecasting.baselines import NaiveDrift
 from darts.utils.callbacks import TFMProgressBar
 from darts.utils.timeseries_generation import datetime_attribute_timeseries as dt_attr
@@ -344,25 +344,41 @@ def get_model(model_name, fh, hyperparams, seed, version=None,
                     pl_trainer_kwargs = pl_trainer_kwargs
                 )
 
+        elif model_name == 'nhits':
+
+            if n_epochs_override:
+                model = NHiTSModel(
+                    input_chunk_length = fh * 2,
+                    output_chunk_length = fh,
+                    n_epochs = n_epochs_override,
+                    pl_trainer_kwargs = pl_trainer_kwargs
+                )
+            else:
+                model = NHiTSModel(
+                    input_chunk_length = fh * 2,
+                    output_chunk_length = fh,
+                    pl_trainer_kwargs = pl_trainer_kwargs
+                )
+
         elif model_name == 'rf':
             model = RandomForest(
-                lags = fh*2 if fh < 14 else fh,
-                lags_past_covariates = fh*2 if fh < 14 else fh,
+                lags = fh*2,
+                lags_past_covariates = fh*2,
                 output_chunk_length = fh
             )
 
         elif model_name == 'xgboost':
             model = XGBModel(
-                lags = fh*2 if fh < 14 else fh,
-                lags_past_covariates = fh*2 if fh < 14 else fh,
+                lags = fh*2,
+                lags_past_covariates = fh*2,
                 output_chunk_length = fh,
                 random_state=seed
             )
 
         elif model_name == 'lgbm':
             model = LightGBMModel(
-                lags = fh*2 if fh < 14 else fh,
-                lags_past_covariates = fh*2 if fh < 14 else fh,
+                lags = fh*2,
+                lags_past_covariates = fh*2,
                 output_chunk_length = fh,
                 verbose=-1,
                 random_state=seed
@@ -400,6 +416,23 @@ def get_model(model_name, fh, hyperparams, seed, version=None,
                 dropout = round(hyp[version][fh]['parameters']['dropout'],7),
                 activation =  hyp[version][fh]['parameters']['activation'],
                 generic_architecture=True if version == 'generic' else False,
+                pl_trainer_kwargs = pl_trainer_kwargs,
+                optimizer_kwargs = {'lr': round(hyp[version][fh]['parameters']['lr'],7) },
+            )
+
+        elif model_name == 'nhits':
+
+            model = NHiTSModel(
+                random_state=seed,
+                input_chunk_length = hyp[version][fh]['parameters']['input_chunk_length'],
+                output_chunk_length = fh,
+                num_stacks = hyp[version][fh]['parameters']['num_stacks'],
+                num_blocks = hyp[version][fh]['parameters']['num_blocks'],
+                num_layers = hyp[version][fh]['parameters']['num_layers'],
+                layer_widths = hyp[version][fh]['parameters']['layer_widths'],
+                batch_size = hyp[version][fh]['parameters']['batch_size'],
+                n_epochs = hyp[version][fh]['parameters']['n_epochs'] if n_epochs_override is None else n_epochs_override,
+                dropout = round(hyp[version][fh]['parameters']['dropout'],7),
                 pl_trainer_kwargs = pl_trainer_kwargs,
                 optimizer_kwargs = {'lr': round(hyp[version][fh]['parameters']['lr'],7) },
             )
@@ -449,15 +482,15 @@ def get_reformatted_hyperparams(hyp_dict, forecast_horizons):
             'generic': {fh: {} for fh in forecast_horizons},
             'interpretable': {fh: {} for fh in forecast_horizons}
         },
+        'nhits': {fh: {} for fh in forecast_horizons},
         'rf': {fh: {} for fh in forecast_horizons},
         'xgboost': {fh: {} for fh in forecast_horizons}
     }
 
-
     for hyp_name, values in hyp_dict.items():
 
-        if len(hyp_name.split('_')) == 4:
-
+        if len(hyp_name.split('_')) == 4: # nbeats's name has 4 components, incl. version
+            
             _, model_name_main, version, fh_str = hyp_name.split('_')
             fh = int(re.search(r'(?:h)(.*)', fh_str).group(1))
 
@@ -547,7 +580,7 @@ def run_experiment(model, model_names, n_epochs_override, hyperparameters, cutof
         best_val_rmse = round(hyperparameters[key]['best_rmse'], 4)
         total_time = training_time + hyp_search_time 
 
-        if model_name in ['nbeats', 'lstm', 'gru']:
+        if model_name in ['nbeats', 'nhits', 'lstm', 'gru']:
             if n_epochs_override is None:
                 n_epochs = hyperparameters[key]['best_parameters']['n_epochs']
             else:
@@ -565,10 +598,10 @@ def run_experiment(model, model_names, n_epochs_override, hyperparameters, cutof
     else:
         model_type = model_name_fh.split('_')[1]
 
-    if model_type == 'default' and n_epochs_override is None and model_name in ['nbeats', 'lstm', 'gru']:
+    if model_type == 'default' and n_epochs_override is None and model_name in ['nbeats', 'nhits', 'lstm', 'gru']:
         n_epochs = 100
     elif n_epochs_override:
-        if model_name not in ['nbeats', 'lstm', 'gru']:
+        if model_name not in ['nbeats', 'nhits', 'lstm', 'gru']:
             n_epochs = np.nan
         else:
             n_epochs = n_epochs_override
@@ -604,8 +637,6 @@ def run_experiment(model, model_names, n_epochs_override, hyperparameters, cutof
             file_name = f'{results_directory}{model_name}_{model_type}_outliers-{has_outliers}_epoch-override-{has_n_epochs_override}_results.csv'
         else:
             file_name = f'{results_directory}{model_name}_{model_type}_epoch-override-{has_n_epochs_override}_results.csv'
-    elif model_name in ['lstm', 'gru']:
-        file_name = f'{results_directory}{model_name}_results.csv'
     else:
         file_name = f'{results_directory}{model_name}_results.csv'
 
