@@ -523,7 +523,7 @@ def get_reformatted_hyperparams(hyp_dict, forecast_horizons):
 
 def run_experiment(model, model_names, n_epochs_override, hyperparameters, cutoff_date, fh, 
                    df_outliers, df_clean, has_outliers, results,
-                   models_directory, results_directory, seed=None):
+                   models_directory, results_directory, seed=None, verbose=True):
     
     """Runs an experiment and saves the results to a file."""
     current_results = results.copy()
@@ -547,13 +547,13 @@ def run_experiment(model, model_names, n_epochs_override, hyperparameters, cutof
     if model_name in non_ml_models:
         model.fit(series=target_train)
 
-    elif model_name in ['nbeats', 'lstm', 'gru']:
+    elif model_name in ['nbeats', 'lstm', 'gru', 'nhits']:
         if seed:
             torch.manual_seed(seed)
         if model_name == 'nbeats':
             model.fit(series=target_train,
                         past_covariates=cov_train,
-                        verbose=False)
+                        verbose=verbose)
         else:
             model.fit(series=target_train,
                         past_covariates=cov_train)
