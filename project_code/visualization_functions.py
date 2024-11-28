@@ -327,3 +327,27 @@ def get_name_for_chart(row):
         return 'NBEATS-I'
     else:
         return row['model_name_proper']
+
+def generate_boxplots(data, columns, y_labels, alternate_x_labels=None, 
+                      granularity='month', figsize=(15,3), 
+                      tick_font_size=10, label_font_size=10,
+                      name=None):
+
+    """Generates monthly or seasonal boxplots for the given columns."""
+
+    for col in columns:
+        fig, ax = plt.subplots(figsize=figsize)
+
+        if granularity == 'month':
+            boxplot = sns.boxplot(data=data, x='month', y=col, ax=ax, color='lightblue')
+        elif granularity == 'season':
+            boxplot = sns.boxplot(data=data, x='season_str', y=col, ax=ax, color='lightblue')
+
+        ax.set_ylabel(y_labels[col], fontsize=label_font_size)
+        ax.set_xlabel('')
+        plt.yticks(fontsize=tick_font_size)
+
+        if alternate_x_labels:
+            ax.set_xticklabels(alternate_x_labels, fontsize=tick_font_size)
+        else:
+            plt.xticks(fontsize=tick_font_size)
