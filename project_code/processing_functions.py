@@ -248,8 +248,8 @@ def get_clean_df(df, agg_cols):
 
     return df_clean
     
-def post_results(results, file, mode='a'):
-    """Records the best hyper parameter search results to a .json main file and a backup."""
+def post_results(results, file, mode='a', create_backup=False):
+    """Records results to a .json file, with an optional backup."""
 
     try:
         with open(file, mode) as output_file:
@@ -257,13 +257,14 @@ def post_results(results, file, mode='a'):
             print(f'\nSuccessfully posted results to {file}')
 
         # create backup file 
-        # split_arr = file.split('.')
-        # backup_file = f'{split_arr[0]}_backup.{split_arr[1]}'
-        # backup_file
+        if create_backup:
+            split_arr = file.split('.')
+            backup_file = f'{split_arr[0]}_backup.{split_arr[1]}'
+            backup_file
 
-        # with open(backup_file, mode) as output_file:
-        #     json.dump(results, output_file)
-        #     print(f'Successfully posted results to {backup_file}\n')
+            with open(backup_file, mode) as output_file:
+                json.dump(results, output_file)
+                print(f'Successfully posted results to {backup_file}\n')
 
     except Exception as e:
         print('Unable to save results to file')
