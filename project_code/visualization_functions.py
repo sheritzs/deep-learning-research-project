@@ -8,7 +8,7 @@ import seaborn as sns
 from statsmodels.tsa.seasonal import STL
 
 
-def correlation_matrix(df, figsize=(18,6), cmap='coolwarm', mask=True, name=None):
+def correlation_matrix(df, figsize=(18,6), cmap='coolwarm', mask=True, name=None, fig_directory='eda_figures/'):
     """Accepts a dataframe and generates a correlation matrix. If
     a name is provided, the image is saved."""
     corr = df.corr()
@@ -27,7 +27,7 @@ def correlation_matrix(df, figsize=(18,6), cmap='coolwarm', mask=True, name=None
     plt.tight_layout()
 
     if name:
-        plt.savefig(f'{name}.png')
+        plt.savefig(f'{fig_directory}{name}.png')
 
     plt.show()
 
