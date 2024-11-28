@@ -64,13 +64,14 @@ def df_from_json(file):
 
     return pd.DataFrame(data)
 
-def generate_df_summary(df, describe_only=False):
+def generate_df_summary(df: pd.DataFrame, name:str = None, describe_only: bool = False):
     """Accepts a pandas dataframe and prints out basic details about the data and dataframe structure."""
     
     object_columns = [col for col in df.columns if df[col].dtype == 'object']
     non_object_columns = [col for col in df.columns if df[col].dtype != 'object']
     
-    print(f'Dataframe: {df.name}\n')
+    if name:
+        print(f'Dataframe: {df.name}\n')
 
     if describe_only:
         print('------ Column Summaries: ------')
