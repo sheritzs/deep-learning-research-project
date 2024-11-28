@@ -110,10 +110,21 @@ def generate_df_summary(df: pd.DataFrame, name:str = None, describe_only: bool =
         print('------ Missing Data Percentage: ------')
         display(df.isnull().sum()/len(df) * 100)   
 
-def daily_aggregations(dataframe):
+def daily_aggregations(dataframe: pd.DataFrame, convert_time: bool = True) -> pd.DataFrame:
     """Aggregates the weather data at a daily level of granularity."""
     
     df_copy = dataframe.copy()
+
+    mapper = {
+        'temperature_2m' : 'temp',
+        'relative_humidity_2m' : 'humidity',
+    }
+
+    df_copy.rename(columns=mapper, inplace=True)
+
+    if convert_time:
+        df_copy['time'] = pd.to_datetime(df_copy['time'])
+
     df_copy['date'] = df_copy['time'].dt.normalize()
     df_copy = df_copy.set_index('date')
     
@@ -126,7 +137,8 @@ def daily_aggregations(dataframe):
     daily_data = df_copy.resample('D').agg(stat_by_variable) 
     df_temp = df_copy['temp'].resample('D').agg([np.min, np.mean, np.max])
     df_temp.columns = [f'temp_{col}' for col in df_temp.columns]
-    
+    df_temp['temp_range'] = df_temp['temp_max'] - df_temp['temp_min']
+        
     # convert to hourly values 
     daily_data['sunshine_duration'] = daily_data['sunshine_duration'] / 3600 
     daily_data.rename(columns={'sunshine_duration': 'sunshine_hr',
@@ -135,8 +147,7 @@ def daily_aggregations(dataframe):
     daily_data = pd.merge(daily_data, df_temp, left_index=True, right_index=True)
 
     # reorder the columns to display sunshine_hr first
-    reordered_columns = [col for col in daily_data if col != 'sunshine_hr']
-    reordered_columns.insert(0, 'sunshine_hr')
+    reordered_columns = ['sunshine_hr'] + [col for col in daily_data if col != 'sunshine_hr']
     
     return daily_data[reordered_columns]
 
