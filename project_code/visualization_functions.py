@@ -31,7 +31,7 @@ def correlation_matrix(df, figsize=(18,6), cmap='coolwarm', mask=True, name=None
 
     plt.show()
 
-def plot_seasonal_decomposition(df, column, period, color, name=''):
+def plot_seasonal_decomposition(df, column, period, color, name=None, fig_directory='eda_figures/'):
     """Provides styled decomposition plots for a given dataframe and column."""
     decomposition = STL(df[column], period=period).fit()
 
@@ -54,13 +54,13 @@ def plot_seasonal_decomposition(df, column, period, color, name=''):
     plt.tight_layout()
 
     if name:
-        plt.savefig(f'{name}.png')
+        plt.savefig(f'{fig_directory}{name}.png')
 
     plt.show()
 
 def plot_monthly_charts(monthly_data: dict, column='COLUMN', 
                         figsize=(20,20), x_label='', y_label='Hours',
-                        ylim_start=0, name=None):
+                        ylim_start=0, name=None, fig_directory='eda_figures/'):
     
     """Plots the Annual Trend, Monthly means, and Three Year Rolling Average."""
     
@@ -275,7 +275,7 @@ def plot_monthly_charts(monthly_data: dict, column='COLUMN',
     fig.tight_layout()
 
     if name:
-        plt.savefig(f'{name}.png')
+        plt.savefig(f'{fig_directory}{name}.png')
 
 def dual_bar_chart(df, x,
                    y1, y2,
