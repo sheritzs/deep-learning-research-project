@@ -687,8 +687,8 @@ def train_test_split(cutoff_date, df_outliers=None, df_clean=None, has_outliers=
     return target_train, target_test, cov_train 
 
 
-def highlight_maxormin(df:pd.DataFrame, columns_to_drop:list=None, index_col='model_name', max:bool=False, print_latex=True):
-    """"Highlights the minimum or maximum value in each row within a given df."""
+def highlight_min_max(df:pd.DataFrame, columns_to_drop:list=None, index_col='model_name', highlight_selection:str='all', print_latex=True):
+    """"Highlights the minimum and maximum column values within a given df."""
 
     if columns_to_drop is None:
         df_copy = df.copy()
@@ -697,22 +697,30 @@ def highlight_maxormin(df:pd.DataFrame, columns_to_drop:list=None, index_col='mo
 
     df_copy.set_index(index_col, inplace=True)
     df_styled = df_copy.style.format("{:.3f}")
+    
+    if highlight_selection == 'all':
+        if print_latex:
+            print('Latex Version: \n')
+            print(df_styled.highlight_min(axis=0, props='font-weight:bold;').highlight_max(axis=0, props='font-weight:bold;').to_latex(convert_css=True))
 
-    if print_latex: 
-        if max == False:
+        df_styled = df_styled.highlight_min(color='green').highlight_max(color='red')
+
+    elif highlight_selection == 'min':
+        if print_latex:
             print('Latex Version: \n')
             print(df_styled.highlight_min(axis=0, props='font-weight:bold;').to_latex(convert_css=True))
-            return df_styled.highlight_min(color='green')  
-        else:
-            print('Latex Version: \n')
-            print(df_styled.highlight_max(axis=0, props="font-weight:bold;").to_latex(convert_css=True))
-            return df_styled.highlight_max(color='red')
 
-    else:
-        if max == False:
-            return df_styled.highlight_min(color='green')
-        else:
-            return df_styled.highlight_max(color='red')
+        df_styled = df_styled.highlight_min(color='green')
+
+    elif highlight_selection == 'max':
+        if print_latex:
+            print('Latex Version: \n')
+            print(df_styled.highlight_max(axis=0, props='font-weight:bold;').to_latex(convert_css=True))
+            
+        df_styled = df_styled.highlight_max(color='red') 
+
+
+    return df_styled
 
 class PyTorchLightningPruningCallback(Callback):
     """
