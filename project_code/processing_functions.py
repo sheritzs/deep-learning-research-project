@@ -687,21 +687,32 @@ def train_test_split(cutoff_date, df_outliers=None, df_clean=None, has_outliers=
     return target_train, target_test, cov_train 
 
 
-def highlight_maxormin(df, max=True, starting_col_idx=0):
+def highlight_maxormin(df:pd.DataFrame, columns_to_drop:list=None, index_col='model_name', max:bool=False, print_latex=True):
     """"Highlights the minimum or maximum value in each row within a given df."""
-    df_styled = df.style.format("{:.3f}").hide()
 
-    for row in df.index:
-        if max:
-            col = df.loc[row][starting_col_idx:].idxmax()
+    if columns_to_drop is None:
+        df_copy = df.copy()
+    else:
+        df_copy = df.copy().drop(columns_to_drop, axis=1)
+
+    df_copy.set_index(index_col, inplace=True)
+    df_styled = df_copy.style.format("{:.3f}")
+
+    if print_latex: 
+        if max == False:
+            print('Latex Version: \n')
+            print(df_styled.highlight_min(axis=0, props='font-weight:bold;').to_latex(convert_css=True))
+            return df_styled.highlight_min(color='green')  
         else:
-            col = df.loc[row][starting_col_idx:].idxmin()
+            print('Latex Version: \n')
+            print(df_styled.highlight_max(axis=0, props="font-weight:bold;").to_latex(convert_css=True))
+            return df_styled.highlight_max(color='red')
 
-        # redo formatting for a specific cell
-        df_styled = df_styled.format(lambda x: "\\textbf{" + f'{x:.3f}' + "}", subset=(row, col))
-
-
-    return df_styled
+    else:
+        if max == False:
+            return df_styled.highlight_min(color='green')
+        else:
+            return df_styled.highlight_max(color='red')
 
 class PyTorchLightningPruningCallback(Callback):
     """
