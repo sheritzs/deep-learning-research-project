@@ -277,22 +277,18 @@ def plot_monthly_charts(monthly_data: dict, column='sunshine_hr',
     if name:
         plt.savefig(f'{fig_directory}{name}.png')
 
-def dual_bar_chart(df, x,
-                   y1, y2,
-                   y1_label, y2_label,
-                   y1_color, y2_color,
-                   font_size):
+def dual_bar_chart(df, x, y1, y2, y1_label, y2_label, y1_color, y2_color, 
+                   font_size, align_axes=True, name=None):
 
     """Plots a dual y-axis grouped bar chart. """
+
     fig = make_subplots(specs=[[{"secondary_y": True}]])
 
-
-
     fig.add_trace(go.Bar(x=df[x], y=df[y1], name=y1_label,
-                        marker_color = y1_color,offsetgroup=1, text=round(df[y1],2)), secondary_y=False)
+                        marker_color = y1_color,offsetgroup=1, text=round(df[y1],3)), secondary_y=False)
 
     fig.add_trace(go.Bar(x=df[x], y=df[y2], name=y2_label,
-                        marker_color = y2_color,offsetgroup=2, text=round(df[y2],2)), secondary_y=True)
+                        marker_color = y2_color,offsetgroup=2, text=round(df[y2],3)), secondary_y=True)
 
     fig.update_layout(
         barmode='group',
@@ -310,23 +306,20 @@ def dual_bar_chart(df, x,
     fig.update_yaxes(
     ticks='outside',
     showline=True,
-    gridcolor='lightgrey'
+    gridcolor='lightgrey',
     )
 
-    fig.update_yaxes(title_text=y2_label, secondary_y=True)
-    fig.update_yaxes(title_text=y1_label, secondary_y=False)
+    if align_axes == True:
+        fig.update_yaxes(title_text=y2_label,rangemode='tozero', scaleanchor='y1', scaleratio=1, constraintoward='bottom', secondary_y=True)
+        fig.update_yaxes(title_text=y1_label,rangemode='tozero', scaleanchor='y2',  scaleratio=1, constraintoward='bottom', secondary_y=False)
+    else:
+        fig.update_yaxes(title_text=y2_label, secondary_y=True)
+        fig.update_yaxes(title_text=y1_label, secondary_y=False)
+
+    if name:
+        fig.write_image(f'results/figures/{name}.png')
 
     fig.show()
-
-def get_name_for_chart(row):
-    if row['model_type'] == 'tuned' and row['model_name_proper'] == 'N-BEATS':
-        return 'NBEATS-T'
-    elif 'generic' in row['model_name_fh']:
-        return 'NBEATS-G'
-    elif 'interpretable' in row['model_name_fh']:
-        return 'NBEATS-I'
-    else:
-        return row['model_name_proper']
 
 def generate_boxplots(data, columns, y_labels, alternate_x_labels=None, 
                       granularity='month', figsize=(15,3), 
