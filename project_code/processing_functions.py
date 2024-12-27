@@ -445,17 +445,17 @@ def get_model(model_name, fh, hyperparams, seed, version=None,
 
             model = NHiTSModel(
                 random_state=seed,
-                input_chunk_length = hyp[version][fh]['parameters']['input_chunk_length'],
+                input_chunk_length = hyp[fh]['parameters']['input_chunk_length'],
                 output_chunk_length = fh,
-                num_stacks = hyp[version][fh]['parameters']['num_stacks'],
-                num_blocks = hyp[version][fh]['parameters']['num_blocks'],
-                num_layers = hyp[version][fh]['parameters']['num_layers'],
-                layer_widths = hyp[version][fh]['parameters']['layer_widths'],
-                batch_size = hyp[version][fh]['parameters']['batch_size'],
-                n_epochs = hyp[version][fh]['parameters']['n_epochs'] if n_epochs_override is None else n_epochs_override,
-                dropout = round(hyp[version][fh]['parameters']['dropout'],7),
+                num_stacks = hyp[fh]['parameters']['num_stacks'],
+                num_blocks = hyp[fh]['parameters']['num_blocks'],
+                num_layers = hyp[fh]['parameters']['num_layers'],
+                layer_widths = hyp[fh]['parameters']['layer_widths'],
+                batch_size = hyp[fh]['parameters']['batch_size'],
+                n_epochs = hyp[fh]['parameters']['n_epochs'] if n_epochs_override is None else n_epochs_override,
+                dropout = round(hyp[fh]['parameters']['dropout'],7),
                 pl_trainer_kwargs = pl_trainer_kwargs,
-                optimizer_kwargs = {'lr': round(hyp[version][fh]['parameters']['lr'],7) },
+                optimizer_kwargs = {'lr': round(hyp[fh]['parameters']['lr'],7) },
             )
 
         elif model_name == 'rf':
