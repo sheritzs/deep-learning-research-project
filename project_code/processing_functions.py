@@ -661,9 +661,13 @@ def run_experiment(model, model_names, n_epochs_override, hyperparameters, cutof
     # else:
     #     file_name = f'{results_directory}{model_name}_results.csv'
 
-    file_name = f'{results_directory}{model_name}_results.csv' 
-    pd.DataFrame(results).to_csv(file_name, index=False)
+    path = f'{results_directory}cutoff_date={cutoff_date}/'
 
+    if not os.path.exists(path):
+        os.makedirs(path)
+
+    file_name = f'{path}{model_name}_cutoffdate={cutoff_date}_results.csv' 
+    pd.DataFrame(results).to_csv(file_name, index=False)
 
 def train_test_split(cutoff_date, df_outliers=None, df_clean=None, has_outliers=False):
 
