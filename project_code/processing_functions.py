@@ -819,3 +819,47 @@ def generate_error_table(df:pd.DataFrame, required_columns:list, index:list,
         return error_table_outliers, error_table_no_outliers 
     else:
         return error_table
+
+def get_naive_model_metrics(naive_models:list, forecast_horizons:list, train_data:TimeSeries,  test_data:TimeSeries):
+    """Generates average and median rmse and mae metrics for the given data and naive models. """
+    
+    results = {'model_name': [],
+           'fh': [],
+           'rmse': [],
+           'mae': [],
+        }
+    
+    for model_name in naive_models:
+
+        for fh in forecast_horizons:
+
+            if model_name == 'naive_drift':
+                model = NaiveDrift()
+            if model_name == 'naive_seasonal':
+                model = NaiveSeasonal(K=365)
+            if model_name == 'naive_mean':
+                model = NaiveMean()
+            if model_name == 'naive_moving_average':
+                model = NaiveMovingAverage(input_chunk_length=fh*2)
+
+            model.fit(train_data)
+            predictions = model.predict(n=fh)
+
+            rmse_score = rmse(predictions, test_data[:fh])
+            mae_score = mae(predictions, test_data[:fh])
+
+            results['model_name'].append(model_name)
+            results['fh'].append(fh)
+            results['rmse'].append(rmse_score)
+            results['mae'].append(mae_score)
+            
+    results_df = pd.DataFrame(results)
+    avg_metrics = results_df.groupby(by=['model_name']).mean().reset_index()\
+                            .sort_values(by=['rmse', 'mae'])\
+                            .loc[:, ['model_name', 'rmse', 'mae']]
+
+    median_metrics = results_df.groupby(by=['model_name']).median().reset_index()\
+                        .sort_values(by=['rmse', 'mae'])\
+                        .loc[:, ['model_name', 'rmse', 'mae']]
+
+    return avg_metrics, median_metrics
