@@ -798,3 +798,24 @@ def generate_cutoff_date(start_date: str, end_date:str, seed=None, n=1, replace=
         return final_dates[0]
     else:
         return final_dates
+
+def generate_error_table(df:pd.DataFrame, required_columns:list, index:list, 
+                          pivot_column='FH', error_metric='rmse', outlier_split=True):
+    """Generates a summary table for the given error metric. """ 
+    required_columns = required_columns + [error_metric]
+
+    error_table = df[required_columns]\
+                        .pivot_table(index=index, columns=pivot_column, values=error_metric)\
+                        .loc[:, ['FH-1', 'FH-3', 'FH-7', 'FH-14', 'FH-28']]\
+                        .sort_values(by=['has_outliers', 'model_name'], ascending=[False, True])\
+                        .reset_index()
+    
+    error_table['Median'] = error_table.iloc[:, 2:].median(axis=1)
+    error_table['Mean'] = round(error_table.iloc[:, 2:].mean(axis=1),4)
+    
+    if outlier_split:
+        error_table_outliers = error_table[error_table['has_outliers'] == True]
+        error_table_no_outliers = error_table[error_table['has_outliers'] == False]
+        return error_table_outliers, error_table_no_outliers 
+    else:
+        return error_table
