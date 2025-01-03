@@ -571,12 +571,12 @@ def run_experiment(model, model_names, n_epochs_override, hyperparameters, cutof
             model.fit(series=target_train,
                         past_covariates=cov_train)
             
-        model.save(f'{models_directory}{model_name_fh}_fitted.pt') 
+        model.save(f'{models_directory}cutoff_date={cutoff_date}/{model_name_fh}_fitted.pt') 
 
     else:
         model.fit(series=target_train,
                     past_covariates=cov_train)
-        model.save(f'{models_directory}{model_name_fh}_fitted.pkl')
+        model.save(f'{models_directory}cutoff_date={cutoff_date}/{model_name_fh}_fitted.pkl')
 
     end_time = time.perf_counter()
     training_time = round((end_time - start_time) / 60, 3)
