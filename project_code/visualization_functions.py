@@ -104,7 +104,7 @@ def plot_monthly_charts(monthly_data: dict,  num_yrs_rolling_avg, column='sunshi
     # plot monthly annual data and 3-year rolling average
     sns.lineplot(ax=axes[0, 0], data=monthly_data[JANUARY], x=YEAR, y=COLUMN, label='Monthly Mean')
     sns.lineplot(ax=axes[0, 0], data=monthly_data[JANUARY], x=YEAR, y=ROLLING_AVG,
-                color='black', linestyle='--', label='3-Year Rolling Average')
+                color='black', linestyle='--', label=f'{num_yrs_rolling_avg}-Year Rolling Average')
     axes[0, 0].text(0.85, 0.07, JANUARY, horizontalalignment='center', verticalalignment='center', 
                     transform=axes[0, 0].transAxes, fontsize=x_font_size)
     axes[0, 0].set_ylabel(y_label, fontsize=y_font_size)
@@ -178,7 +178,7 @@ def plot_monthly_charts(monthly_data: dict,  num_yrs_rolling_avg, column='sunshi
 
     sns.lineplot(ax=axes[1, 2], data=monthly_data[JUNE], x=YEAR, y=COLUMN, label='Monthly Mean')
     sns.lineplot(ax=axes[1, 2], data=monthly_data[JUNE], x=YEAR, y=ROLLING_AVG,
-                color='black', linestyle='--', label='3-Year Rolling Average')
+                color='black', linestyle='--', label=f'{num_yrs_rolling_avg}-Year Rolling Average')
     axes[1, 2].text(0.85, 0.07, JUNE, horizontalalignment='center', verticalalignment='center', 
                     transform=axes[1, 2].transAxes, fontsize=x_font_size)
     axes[1, 2].set_ylabel('')
@@ -237,7 +237,7 @@ def plot_monthly_charts(monthly_data: dict,  num_yrs_rolling_avg, column='sunshi
 
     sns.lineplot(ax=axes[3, 0], data=monthly_data[OCTOBER], x=YEAR, y=COLUMN, label='Monthly Mean')
     sns.lineplot(ax=axes[3, 0], data=monthly_data[OCTOBER], x=YEAR, y=ROLLING_AVG,
-                color='black', linestyle='--', label='3-Year Rolling Average')
+                color='black', linestyle='--', label=f'{num_yrs_rolling_avg}-Year Rolling Average')
     axes[3, 0].text(0.85, 0.07, OCTOBER, horizontalalignment='center', verticalalignment='center', 
                     transform=axes[3, 0].transAxes, fontsize=x_font_size)
     axes[3, 0].set_ylabel(y_label, fontsize=y_font_size)
