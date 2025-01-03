@@ -545,6 +545,10 @@ def run_experiment(model, model_names, n_epochs_override, hyperparameters, cutof
     model_name_proper = model_names[1]
     model_name_fh = model_names[2]
 
+    path = f'{models_directory}cutoff_date={cutoff_date}/'
+    if not os.path.exists(path):
+        os.makedirs(path)
+
     print(f'\nRunning {model_name_fh} Experiments - Forecast Horizon: {fh} | Outlier Flag: {has_outliers}...\n') 
 
     target_train, target_test, cov_train = train_test_split(cutoff_date, df_outliers, df_clean,  has_outliers=has_outliers)
