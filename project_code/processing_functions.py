@@ -867,3 +867,107 @@ def get_naive_model_metrics(naive_models:list, forecast_horizons:list, train_dat
                         .loc[:, ['model_name', 'rmse', 'mae']]
 
     return avg_metrics, median_metrics
+
+
+def get_compiled_rankings(conditions, sort_col='Median', ascending=True, rank_type='Best', top_3_only=True):
+
+    #------------------ Outlier Condition - Outlier Dataset: April ------------------
+    rmse_outlCond_outlData_apr = conditions['rmse_outlCond_outlData_apr'].copy().sort_values(by=sort_col, ascending=ascending).reset_index(drop=True)
+    rmse_outlCond_outlData_apr['Description'] = 'HP-Outlier-Outlier-Condition-April-RMSE' 
+
+    mae_outlCond_outlData_apr = conditions['mae_outlCond_outlData_apr'].copy().sort_values(by=sort_col, ascending=ascending).reset_index(drop=True)
+    mae_outlCond_outlData_apr['Description'] = 'HP-Outlier-Outlier-Condition-April-MAE' 
+
+    #------------------ Outlier Condition - Outlier Dataset: August ------------------
+    rmse_outlCond_outlData_aug = conditions['rmse_outlCond_outlData_aug'].copy().sort_values(by=sort_col, ascending=ascending).reset_index(drop=True)
+    rmse_outlCond_outlData_aug['Description'] = 'HP-Outlier-Outlier-Condition-August-RMSE' 
+
+    mae_outlCond_outlData_aug = conditions['mae_outlCond_outlData_aug'].copy().sort_values(by=sort_col, ascending=ascending).reset_index(drop=True)
+    mae_outlCond_outlData_aug['Description'] = 'HP-Outlier-Outlier-Condition-August-MAE' 
+
+    #------------------ Outlier Condition - Clean Dataset: April ------------------
+    rmse_outlCond_clnData_apr = conditions['rmse_outlCond_clnData_apr'].copy().sort_values(by=sort_col, ascending=ascending).reset_index(drop=True)
+    rmse_outlCond_clnData_apr['Description'] = 'HP-Outlier-Clean-Condition-April-RMSE' 
+
+    mae_outlCond_clnData_apr = conditions['mae_outlCond_clnData_apr'].copy().sort_values(by=sort_col, ascending=ascending).reset_index(drop=True)
+    mae_outlCond_clnData_apr['Description'] = 'HP-Outlier-Clean-Condition-April-MAE' 
+
+    #------------------ Outlier Condition - Clean Dataset: August ------------------
+    rmse_outlCond_clnData_aug = conditions['rmse_outlCond_clnData_aug'].copy().sort_values(by=sort_col, ascending=ascending).reset_index(drop=True)
+    rmse_outlCond_clnData_aug['Description'] = 'HP-Outlier-Clean-Condition-August-RMSE' 
+
+    mae_outlCond_clnData_aug = conditions['mae_outlCond_clnData_aug'].copy().sort_values(by=sort_col, ascending=ascending).reset_index(drop=True)
+    mae_outlCond_clnData_aug['Description'] = 'HP-Outlier-Clean-Condition-August-MAE' 
+
+    #------------------ Clean Condition - Clean Dataset: April ------------------
+    rmse_clnCond_clnData_apr = conditions['rmse_clnCond_clnData_apr'].copy().sort_values(by=sort_col, ascending=ascending).reset_index(drop=True)
+    rmse_clnCond_clnData_apr['Description'] = 'HP-Clean-Clean-Condition-April-RMSE' 
+
+    mae_clnCond_clnData_apr = conditions['mae_clnCond_clnData_apr'].copy().sort_values(by=sort_col, ascending=ascending).reset_index(drop=True)
+    mae_clnCond_clnData_apr['Description'] = 'HP-Clean-Clean-Condition-April-MAE' 
+
+
+    # compile ranked data 
+
+    compiled_data = pd.concat([rmse_outlCond_outlData_apr,
+              mae_outlCond_outlData_apr,
+              rmse_outlCond_outlData_aug,
+              mae_outlCond_outlData_aug,
+              rmse_outlCond_clnData_apr,
+              mae_outlCond_clnData_apr,
+              rmse_outlCond_clnData_aug,
+              mae_outlCond_clnData_aug,
+              rmse_clnCond_clnData_apr,
+              mae_clnCond_clnData_apr])
+
+    compiled_data['rank_type'] = rank_type 
+    compiled_data['rank_sort_key'] = sort_col
+    
+    compiled_data['rank'] = compiled_data.index + 1
+
+    compiled_data['main_model'] =  compiled_data.apply(lambda row: 'GRU' if 'GRU' in row['model_name']
+                                                                      else 'LGBM' if 'LGBM' in row['model_name']
+                                                                      else 'LSTM' if 'LSTM' in row['model_name']
+                                                                      else 'N-BEATS' if 'NBEATS' in row['model_name']
+                                                                      else 'N-HiTS' if 'NHiTS' in row['model_name']
+                                                                      else 'RF' if 'RF' in row['model_name']
+                                                                      else 'XGB' if 'XGB' in row['model_name']
+                                                                      else row['model_name'],
+                                                                      axis=1)
+    
+    compiled_data['model_category'] =  compiled_data.apply(lambda row: 'Novel DL' if  row['main_model'] in ['N-BEATS', 'N-HiTS']
+                                                                      else 'Standard DL' if  row['main_model'] in ['GRU', 'LSTM']
+                                                                      else 'Ensemble' if row['main_model'] in ['LGBM', 'RF', 'XGB']
+                                                                      else 'Benchmark' if row['main_model'] in ['ETS', 'Naive Drift']
+                                                                      else row['main_model'],
+                                                                      axis=1)
+    
+    compiled_data['condition'] =  compiled_data.apply(lambda row: 'HP-Outlier-Outlier' if 'HP-Outlier-Outlier' in row['Description']
+                                                                      else 'HP-Outlier-Clean' if 'HP-Outlier-Clean' in row['Description']
+                                                                      else 'HP-Clean-Clean' if 'HP-Clean-Clean' in row['Description']
+                                                                      else row['Description'],
+                                                                      axis=1)
+
+    compiled_data['month'] =  compiled_data.apply(lambda row: 'April' if 'April' in row['Description']
+                                                                      else 'August' if 'August' in row['Description']
+                                                                      else row['Description'],
+                                                                      axis=1)
+
+    compiled_data['metric'] =  compiled_data.apply(lambda row: 'RMSE' if 'RMSE' in row['Description']
+                                                                      else 'MAE' if 'MAE' in row['Description']
+                                                                      else row['Description'],
+                                                                      axis=1)
+    
+    compiled_data['metric_value'] = compiled_data[sort_col]
+    
+    compiled_data['top_3_ind'] =  compiled_data.apply(lambda row: 'Top 3' if  row['rank'] <= 3
+                                                                      else '',
+                                                                      axis=1)
+    
+    if top_3_only:
+        compiled_data = compiled_data[compiled_data['top_3_ind'] == 'Top 3']
+        
+    final_cols = ['condition', 'model_category', 'model_name', 'main_model',  'month', 'has_outliers',
+                   'rank_type', 'rank_sort_key', 'rank','metric', 'metric_value']
+    
+    return compiled_data[final_cols]
